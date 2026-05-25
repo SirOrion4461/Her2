@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HerRhythm — Weight Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blush: #F2C4B0;
+  --rose: #D97B6C;
+  --terracotta: #C25E4A;
+  --cream: #FDF6EE;
+  --warm-white: #FFF9F4;
+  --bark: #5C3D2E;
+  --soft-brown: #8B5E52;
+  --sage: #A8B5A0;
+  --sage-dark: #6B8F63;
+  --text: #3D2419;
+  --muted: #9E7B6F;
+
+  --mens-color: #D97B6C;
+  --foll-color: #6B9E8B;
+  --ovul-color: #E8A87C;
+  --lute-color: #9B7EC8;
+
+  --athlete-dark: #1A1A2E;
+  --athlete-accent: #E94560;
+  --athlete-blue: #0F3460;
+  --athlete-gold: #F5A623;
+  --athlete-green: #4CAF7D;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:'DM Sans',sans-serif; background:#E8E0D8; color:var(--text); min-height:100vh; display:flex; justify-content:center; }
+
+.app { width:100%; max-width:480px; min-height:100vh; background:var(--warm-white); position:relative; box-shadow:0 0 80px rgba(92,61,46,0.18); display:flex; flex-direction:column; }
+
+/* ── TOP BAR ── */
+.top-bar {
+  position:sticky; top:0; z-index:60;
+  background:rgba(253,246,238,0.97); backdrop-filter:blur(20px);
+  padding:14px 20px 12px; border-bottom:1px solid rgba(242,196,176,0.3);
+}
+.top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.app-logo { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; color:var(--terracotta); text-decoration:none; }
+.app-logo span { color:var(--bark); }
+
+/* Main tabs */
+.main-tabs { display:flex; gap:6px; }
+.main-tab {
+  flex:1; padding:8px 10px; border-radius:12px; border:1.5px solid rgba(242,196,176,0.35);
+  background:transparent; font-family:'DM Sans',sans-serif; font-size:0.8rem; font-weight:500;
+  color:var(--soft-brown); cursor:pointer; transition:all 0.25s; text-align:center;
+}
+.main-tab.active { background:var(--bark); border-color:var(--bark); color:white; }
+.main-tab.athlete-tab.active { background:var(--athlete-dark); border-color:var(--athlete-accent); color:white; }
+
+/* ── SCROLLABLE BODY ── */
+.body { flex:1; overflow-y:auto; padding-bottom:90px; }
+.body::-webkit-scrollbar { width:3px; }
+.body::-webkit-scrollbar-thumb { background:rgba(242,196,176,0.4); border-radius:4px; }
+
+/* ── PANELS ── */
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* ══════════════════════════════════════
+   CYCLE WEIGHT TRACKER PANEL
+══════════════════════════════════════ */
+
+/* Mode toggle */
+.mode-toggle-wrap {
+  padding:16px 20px 8px; display:flex; align-items:center; justify-content:space-between;
+}
+.mode-label { font-size:0.85rem; color:var(--soft-brown); font-weight:400; }
+.mode-label strong { color:var(--bark); font-weight:600; }
+.toggle-switch { position:relative; width:52px; height:28px; cursor:pointer; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-track {
+  position:absolute; inset:0; background:rgba(242,196,176,0.4);
+  border-radius:50px; transition:background 0.3s;
+}
+.toggle-switch input:checked + .toggle-track { background:var(--terracotta); }
+.toggle-thumb {
+  position:absolute; top:3px; left:3px; width:22px; height:22px;
+  border-radius:50%; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  transition:transform 0.3s; pointer-events:none;
+}
+.toggle-switch input:checked ~ .toggle-thumb { transform:translateX(24px); }
+
+/* ── SIMPLE MODE ── */
+#simpleMode { display:none; }
+
+.simple-hero {
+  margin:12px 20px; background:var(--bark); border-radius:22px;
+  padding:28px 24px; text-align:center; position:relative; overflow:hidden;
+}
+.simple-hero::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 60% at 50% 30%, rgba(242,196,176,0.1) 0%, transparent 70%);
+}
+.simple-hero-lbl { font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:var(--blush); opacity:0.7; margin-bottom:6px; }
+.simple-weight-display { font-family:'Playfair Display',serif; font-size:4rem; font-weight:700; color:white; line-height:1; margin-bottom:4px; }
+.simple-weight-display sup { font-size:1.5rem; vertical-align:super; }
+.simple-weight-unit { font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:16px; }
+.simple-change { display:inline-flex; align-items:center; gap:6px; background:rgba(107,143,99,0.25); border:1px solid rgba(107,143,99,0.3); border-radius:50px; padding:6px 16px; }
+.simple-change-val { font-size:0.9rem; font-weight:600; color:#7BC47B; }
+.simple-change-lbl { font-size:0.78rem; color:rgba(255,255,255,0.5); }
+
+.simple-log-card { margin:16px 20px; background:white; border-radius:20px; border:1px solid rgba(242,196,176,0.35); overflow:hidden; }
+.simple-log-header { padding:16px 18px 14px; border-bottom:1px solid rgba(242,196,176,0.2); display:flex; align-items:center; justify-content:space-between; }
+.simple-log-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:600; color:var(--bark); }
+.simple-log-body { padding:18px; display:flex; flex-direction:column; gap:16px; }
+
+.big-input-wrap { display:flex; align-items:center; gap:12px; }
+.big-weight-input {
+  flex:1; font-family:'Playfair Display',serif; font-size:2.2rem; font-weight:700;
+  color:var(--bark); background:var(--cream); border:2px solid rgba(242,196,176,0.4);
+  border-radius:16px; padding:14px 18px; outline:none; text-align:center;
+  transition:border-color 0.2s;
+}
+.big-weight-input:focus { border-color:var(--terracotta); }
+.unit-toggle { display:flex; flex-direction:column; gap:4px; }
+.unit-btn {
+  padding:6px 12px; border-radius:8px; border:1.5px solid rgba(242,196,176,0.4);
+  background:var(--cream); font-family:'DM Sans',sans-serif; font-size:0.78rem;
+  font-weight:500; color:var(--soft-brown); cursor:pointer; transition:all 0.2s;
+}
+.unit-btn.active { background:var(--terracotta); border-color:var(--terracotta); color:white; }
+
+.simple-extras { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.s-field { display:flex; flex-direction:column; gap:5px; }
+.s-label { font-size:0.7rem; color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:0.5px; }
+.s-input {
+  background:var(--cream); border:1.5px solid rgba(242,196,176,0.35);
+  border-radius:12px; padding:9px 12px; font-family:'DM Sans',sans-serif;
+  font-size:0.88rem; color:var(--text); outline:none; transition:border-color 0.2s; width:100%;
+}
+.s-input:focus { border-color:var(--rose); background:white; }
+
+/* Simple chart */
+.simple-chart-wrap { margin:0 20px 16px; background:white; border-radius:20px; border:1px solid rgba(242,196,176,0.35); padding:18px; }
+.chart-title { font-family:'Playfair Display',serif; font-size:0.95rem; font-weight:600; color:var(--bark); margin-bottom:14px; }
+.simple-chart { width:100%; height:120px; position:relative; }
+.chart-svg { width:100%; height:100%; overflow:visible; }
+
+.save-btn {
+  width:100%; padding:13px; border-radius:50px; border:none; background:var(--terracotta);
+  color:white; font-family:'DM Sans',sans-serif; font-size:0.92rem; font-weight:500;
+  cursor:pointer; transition:all 0.25s; box-shadow:0 4px 16px rgba(194,94,74,0.2);
+}
+.save-btn:hover { background:var(--bark); transform:translateY(-1px); }
+
+/* ── CYCLE-SMART MODE ── */
+#cycleMode { display:block; }
+
+/* Phase comparison header */
+.phase-compare-header {
+  padding:20px 20px 0; display:flex; flex-direction:column; gap:12px;
+}
+.compare-title-row { display:flex; align-items:baseline; justify-content:space-between; }
+.compare-title { font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:700; color:var(--bark); }
+.compare-subtitle { font-size:0.78rem; color:var(--muted); font-weight:300; }
+
+/* Phase selector pills */
+.phase-pills { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+.phase-pills::-webkit-scrollbar { display:none; }
+.phase-pill {
+  flex-shrink:0; padding:7px 16px; border-radius:50px; border:1.5px solid transparent;
+  font-family:'DM Sans',sans-serif; font-size:0.78rem; font-weight:500; cursor:pointer;
+  transition:all 0.25s; white-space:nowrap;
+}
+.phase-pill[data-phase="mens"]  { background:rgba(217,123,108,0.1); border-color:rgba(217,123,108,0.3); color:var(--mens-color); }
+.phase-pill[data-phase="foll"]  { background:rgba(107,158,139,0.1); border-color:rgba(107,158,139,0.3); color:var(--foll-color); }
+.phase-pill[data-phase="ovul"]  { background:rgba(232,168,124,0.1); border-color:rgba(232,168,124,0.3); color:var(--ovul-color); }
+.phase-pill[data-phase="lute"]  { background:rgba(155,126,200,0.1); border-color:rgba(155,126,200,0.3); color:var(--lute-color); }
+.phase-pill[data-phase="mens"].active  { background:var(--mens-color); color:white; border-color:var(--mens-color); }
+.phase-pill[data-phase="foll"].active  { background:var(--foll-color); color:white; border-color:var(--foll-color); }
+.phase-pill[data-phase="ovul"].active  { background:var(--ovul-color); color:white; border-color:var(--ovul-color); }
+.phase-pill[data-phase="lute"].active  { background:var(--lute-color); color:white; border-color:var(--lute-color); }
+
+/* Phase comparison cards — month over month */
+.phase-compare-section { padding:16px 20px 0; }
+.pcs-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.pcs-title { font-family:'Playfair Display',serif; font-size:0.95rem; font-weight:600; color:var(--bark); }
+.pcs-badge { font-size:0.72rem; color:white; padding:4px 10px; border-radius:50px; font-weight:500; }
+
+.phase-month-stack { display:flex; flex-direction:column; gap:10px; }
+.phase-month-row {
+  background:white; border-radius:16px; border:1px solid rgba(242,196,176,0.3);
+  padding:14px 16px; display:flex; align-items:center; gap:14px;
+  transition:all 0.2s;
+}
+.phase-month-row:hover { box-shadow:0 4px 16px rgba(194,94,74,0.08); transform:translateY(-1px); }
+.pmr-cycle-label { font-size:0.72rem; color:var(--muted); font-weight:500; white-space:nowrap; min-width:54px; }
+.pmr-bar-wrap { flex:1; }
+.pmr-phase-label { font-size:0.68rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; }
+.pmr-bar-bg { height:8px; background:rgba(242,196,176,0.2); border-radius:50px; overflow:hidden; }
+.pmr-bar-fill { height:100%; border-radius:50px; transition:width 1s cubic-bezier(0.4,0,0.2,1); }
+.pmr-stats { display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:80px; }
+.pmr-avg { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; color:var(--bark); }
+.pmr-change { font-size:0.72rem; font-weight:500; }
+.pmr-change.down { color:var(--sage-dark); }
+.pmr-change.up { color:var(--terracotta); }
+.pmr-change.flat { color:var(--muted); }
+
+/* Phase insight card */
+.phase-insight-card {
+  margin:16px 20px 0; border-radius:18px; padding:18px 20px; position:relative; overflow:hidden;
+}
+.phase-insight-card::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 60% at 90% 20%, rgba(255,255,255,0.12) 0%, transparent 70%);
+}
+.pic-phase { font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-bottom:6px; }
+.pic-title { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; color:white; margin-bottom:8px; line-height:1.25; }
+.pic-title em { font-style:italic; opacity:0.8; }
+.pic-body { font-size:0.82rem; color:rgba(255,255,255,0.65); line-height:1.65; font-weight:300; }
+.pic-stats-row { display:flex; gap:12px; margin-top:14px; }
+.pic-stat { background:rgba(255,255,255,0.1); border-radius:12px; padding:10px 14px; flex:1; text-align:center; }
+.pic-stat-val { font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:700; color:white; }
+.pic-stat-lbl { font-size:0.65rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+
+/* Cycle weight chart */
+.cycle-chart-section { margin:16px 20px 0; background:white; border-radius:20px; border:1px solid rgba(242,196,176,0.3); padding:18px; }
+.cycle-chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.cycle-chart-title { font-family:'Playfair Display',serif; font-size:0.95rem; font-weight:600; color:var(--bark); }
+.cycle-chart-sub { font-size:0.75rem; color:var(--muted); margin-bottom:14px; }
+.chart-area { width:100%; height:160px; position:relative; }
+.phase-band { position:absolute; top:0; height:100%; opacity:0.07; }
+.chart-legend-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.cl-item { display:flex; align-items:center; gap:5px; font-size:0.7rem; color:var(--muted); }
+.cl-dot { width:8px; height:8px; border-radius:50%; }
+
+/* Today log in cycle mode */
+.cycle-log-card { margin:16px 20px; background:white; border-radius:20px; border:1px solid rgba(242,196,176,0.35); overflow:hidden; }
+.clc-header { padding:14px 18px; border-bottom:1px solid rgba(242,196,176,0.2); background:linear-gradient(135deg, var(--cream), var(--warm-white)); display:flex; align-items:center; justify-content:space-between; }
+.clc-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:600; color:var(--bark); }
+.clc-phase-tag { font-size:0.72rem; padding:4px 12px; border-radius:50px; font-weight:500; color:white; }
+.clc-body { padding:18px; display:flex; flex-direction:column; gap:16px; }
+
+/* Weight entry with context */
+.weight-entry-row { display:flex; gap:10px; align-items:center; }
+.weight-entry-big {
+  flex:1; font-family:'Playfair Display',serif; font-size:2rem; font-weight:700;
+  color:var(--bark); background:var(--cream); border:2px solid rgba(242,196,176,0.4);
+  border-radius:14px; padding:12px 16px; outline:none; text-align:center;
+  transition:border-color 0.2s;
+}
+.weight-entry-big:focus { border-color:var(--terracotta); }
+.weight-context-col { display:flex; flex-direction:column; gap:6px; }
+.wc-item { font-size:0.75rem; color:var(--soft-brown); background:var(--cream); border-radius:8px; padding:5px 10px; font-weight:400; }
+
+/* Context fields grid */
+.context-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ctx-field { display:flex; flex-direction:column; gap:5px; }
+.ctx-label { font-size:0.7rem; color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:0.5px; }
+.ctx-input {
+  background:var(--cream); border:1.5px solid rgba(242,196,176,0.35);
+  border-radius:12px; padding:9px 12px; font-family:'DM Sans',sans-serif;
+  font-size:0.88rem; color:var(--text); outline:none; transition:border-color 0.2s; width:100%;
+}
+.ctx-input:focus { border-color:var(--rose); background:white; }
+
+/* Context tag toggles */
+.ctx-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.ctx-tag {
+  padding:6px 12px; border-radius:50px; border:1.5px solid rgba(242,196,176,0.35);
+  background:var(--cream); font-size:0.75rem; color:var(--soft-brown); cursor:pointer;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif; font-weight:400;
+}
+.ctx-tag:hover { border-color:var(--rose); }
+.ctx-tag.active { background:rgba(194,94,74,0.1); border-color:var(--terracotta); color:var(--terracotta); font-weight:500; }
+
+/* Phase progress comparison mini */
+.phase-progress-mini { background:var(--cream); border-radius:14px; padding:14px 16px; }
+.ppm-title { font-size:0.72rem; color:var(--rose); font-weight:600; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:12px; }
+.ppm-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.ppm-phase { font-size:0.75rem; color:var(--soft-brown); width:70px; flex-shrink:0; }
+.ppm-bar-bg { flex:1; height:6px; background:rgba(242,196,176,0.3); border-radius:50px; overflow:hidden; }
+.ppm-bar-fill { height:100%; border-radius:50px; }
+.ppm-val { font-size:0.78rem; font-weight:600; color:var(--bark); min-width:48px; text-align:right; }
+
+
+/* ══════════════════════════════════════
+   ATHLETE PANEL
+══════════════════════════════════════ */
+.athlete-panel { background:var(--athlete-dark); min-height:100%; }
+
+.athlete-hero {
+  padding:28px 20px 20px; position:relative; overflow:hidden;
+  background:linear-gradient(160deg, var(--athlete-dark) 0%, #16213e 100%);
+}
+.athlete-hero::before {
+  content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px;
+  border-radius:50%; background:rgba(233,69,96,0.08); pointer-events:none;
+}
+.athlete-hero::after {
+  content:''; position:absolute; bottom:-40px; left:-40px; width:150px; height:150px;
+  border-radius:50%; background:rgba(245,166,35,0.06); pointer-events:none;
+}
+.athlete-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(233,69,96,0.15); border:1px solid rgba(233,69,96,0.3); border-radius:50px; padding:5px 14px; font-size:0.72rem; font-weight:500; color:var(--athlete-accent); letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
+.athlete-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:white; line-height:1.15; margin-bottom:8px; }
+.athlete-title em { font-style:italic; color:var(--athlete-accent); }
+.athlete-subtitle { font-size:0.85rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.65; max-width:280px; }
+
+/* Mode toggle cut/bulk */
+.cb-toggle-row { display:flex; gap:8px; padding:16px 20px 0; }
+.cb-btn {
+  flex:1; padding:12px; border-radius:14px; border:1.5px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.05); font-family:'DM Sans',sans-serif; font-size:0.9rem;
+  font-weight:500; color:rgba(255,255,255,0.5); cursor:pointer; transition:all 0.25s; text-align:center;
+}
+.cb-btn.cut.active { background:rgba(233,69,96,0.2); border-color:var(--athlete-accent); color:var(--athlete-accent); }
+.cb-btn.bulk.active { background:rgba(76,175,125,0.2); border-color:var(--athlete-green); color:var(--athlete-green); }
+.cb-btn.maintain.active { background:rgba(245,166,35,0.2); border-color:var(--athlete-gold); color:var(--athlete-gold); }
+
+/* Athlete stats grid */
+.athlete-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:16px 20px 0; }
+.a-stat-card { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px; }
+.a-stat-label { font-size:0.68rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.a-stat-val { font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700; color:white; line-height:1; margin-bottom:3px; }
+.a-stat-sub { font-size:0.72rem; color:rgba(255,255,255,0.35); }
+.a-stat-bar { height:4px; background:rgba(255,255,255,0.08); border-radius:50px; margin-top:10px; overflow:hidden; }
+.a-stat-bar-fill { height:100%; border-radius:50px; }
+
+/* Macro targets */
+.macro-section { padding:16px 20px 0; }
+.macro-section-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:600; color:white; margin-bottom:12px; }
+.macro-grid { display:flex; gap:8px; }
+.macro-card { flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px 10px; text-align:center; }
+.macro-icon { font-size:1.3rem; margin-bottom:6px; }
+.macro-name { font-size:0.65rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.macro-val { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; color:white; margin-bottom:2px; }
+.macro-unit { font-size:0.68rem; color:rgba(255,255,255,0.35); }
+.macro-pct-bar { height:4px; border-radius:50px; margin-top:8px; }
+
+/* Cycle-adjusted macro note */
+.cycle-macro-note { margin:12px 20px 0; background:rgba(255,255,255,0.04); border:1px solid rgba(242,196,176,0.15); border-radius:14px; padding:14px 16px; }
+.cmn-label { font-size:0.68rem; color:var(--blush); text-transform:uppercase; letter-spacing:1.5px; font-weight:500; margin-bottom:8px; opacity:0.8; }
+.cmn-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.cmn-phase { font-size:0.8rem; color:rgba(255,255,255,0.6); }
+.cmn-adj { font-size:0.8rem; font-weight:500; }
+.cmn-adj.up { color:#7BC47B; }
+.cmn-adj.down { color:var(--athlete-accent); }
+.cmn-adj.flat { color:rgba(255,255,255,0.4); }
+.cmn-note { font-size:0.78rem; color:rgba(255,255,255,0.35); line-height:1.6; margin-top:8px; font-weight:300; }
+
+/* Training log */
+.training-section { padding:16px 20px 0; }
+.training-section-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:600; color:white; margin-bottom:12px; }
+.training-card { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px; margin-bottom:10px; }
+.tc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.tc-day { font-size:0.78rem; color:rgba(255,255,255,0.4); }
+.tc-phase-tag { font-size:0.68rem; padding:3px 10px; border-radius:50px; font-weight:500; }
+.training-fields { display:flex; flex-direction:column; gap:10px; }
+.tf-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.tf-field { display:flex; flex-direction:column; gap:4px; }
+.tf-label { font-size:0.65rem; color:rgba(255,255,255,0.35); text-transform:uppercase; letter-spacing:1px; }
+.tf-input {
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px; padding:8px 12px; font-family:'DM Sans',sans-serif;
+  font-size:0.88rem; color:white; outline:none; transition:border-color 0.2s; width:100%;
+}
+.tf-input:focus { border-color:rgba(233,69,96,0.5); background:rgba(255,255,255,0.08); }
+.tf-input::placeholder { color:rgba(255,255,255,0.2); }
+.tf-select {
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px; padding:8px 12px; font-family:'DM Sans',sans-serif;
+  font-size:0.82rem; color:rgba(255,255,255,0.7); outline:none; width:100%; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+}
+
+/* Athlete phase guide */
+.phase-guide { padding:16px 20px; }
+.phase-guide-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:600; color:white; margin-bottom:12px; }
+.pg-card { background:rgba(255,255,255,0.04); border-radius:14px; border:1px solid rgba(255,255,255,0.07); padding:14px 16px; margin-bottom:8px; }
+.pg-card-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.pg-phase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.pg-phase-name { font-size:0.88rem; font-weight:600; color:white; }
+.pg-phase-days { font-size:0.72rem; color:rgba(255,255,255,0.35); }
+.pg-rows { display:flex; flex-direction:column; gap:6px; }
+.pg-row { display:flex; align-items:flex-start; gap:8px; font-size:0.8rem; color:rgba(255,255,255,0.55); line-height:1.5; }
+.pg-icon { flex-shrink:0; margin-top:1px; }
+
+/* Athlete save btn */
+.athlete-save-btn {
+  width:calc(100% - 40px); margin:16px 20px; padding:14px; border-radius:50px; border:none;
+  background:linear-gradient(135deg, var(--athlete-accent), #C13050);
+  color:white; font-family:'DM Sans',sans-serif; font-size:0.92rem; font-weight:600;
+  cursor:pointer; transition:all 0.25s; box-shadow:0 4px 20px rgba(233,69,96,0.3);
+  display:block; text-align:center;
+}
+.athlete-save-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(233,69,96,0.4); }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:480px; max-width:100vw;
+  background:rgba(253,246,238,0.97); backdrop-filter:blur(20px);
+  border-top:1px solid rgba(242,196,176,0.3);
+  padding:10px 20px 20px; display:flex; justify-content:space-around; z-index:60;
+}
+.nav-item { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; text-decoration:none; padding:6px 10px; border-radius:12px; transition:all 0.2s; min-width:52px; }
+.nav-item:hover { background:rgba(242,196,176,0.2); }
+.nav-item.active { background:rgba(242,196,176,0.25); }
+.nav-icon { font-size:1.25rem; }
+.nav-label { font-size:0.64rem; font-weight:400; color:var(--muted); }
+.nav-item.active .nav-label { color:var(--terracotta); font-weight:500; }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--bark); color:white; padding:11px 22px; border-radius:50px; font-size:0.85rem; box-shadow:0 8px 28px rgba(92,61,46,0.3); z-index:200; opacity:0; transition:all 0.3s ease; white-space:nowrap; pointer-events:none; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.fade-up { animation:fadeUp 0.5s ease both; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-row">
+      <a href="herrhythm-landing.html" class="app-logo">Her<span>Rhythm</span></a>
+      <span style="font-size:0.8rem;color:var(--muted);">May 25, 2026</span>
+    </div>
+    <div class="main-tabs">
+      <button class="main-tab active" onclick="showPanel('cycle')" id="tab-cycle">⚖️ Weight Tracker</button>
+      <button class="main-tab athlete-tab" onclick="showPanel('athlete')" id="tab-athlete">🏋️ Athlete Mode</button>
+    </div>
+  </div>
+
+  <div class="body" id="appBody">
+
+    <!-- ══════════════════════════════════════
+         CYCLE WEIGHT TRACKER PANEL
+    ══════════════════════════════════════ -->
+    <div class="panel active" id="panel-cycle">
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle-wrap">
+        <div class="mode-label" id="modeLabel"><strong>Cycle-Smart</strong> tracking</div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="modeToggle" onchange="toggleMode()">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div style="padding:0 20px 12px;font-size:0.78rem;color:var(--muted);" id="modeSubLabel">Comparing luteal → luteal, follicular → follicular for accurate progress</div>
+
+      <!-- ── CYCLE-SMART MODE ── -->
+      <div id="cycleMode">
+
+        <!-- Phase selector -->
+        <div class="phase-compare-header">
+          <div class="compare-title-row">
+            <div class="compare-title">Phase-by-Phase Progress</div>
+            <div class="compare-subtitle">Tap to view</div>
+          </div>
+          <div class="phase-pills">
+            <button class="phase-pill active" data-phase="lute" onclick="selectPhase(this,'lute')">🌙 Luteal</button>
+            <button class="phase-pill" data-phase="mens" onclick="selectPhase(this,'mens')">🌱 Menstrual</button>
+            <button class="phase-pill" data-phase="foll" onclick="selectPhase(this,'foll')">☀️ Follicular</button>
+            <button class="phase-pill" data-phase="ovul" onclick="selectPhase(this,'ovul')">✨ Ovulation</button>
+          </div>
+        </div>
+
+        <!-- Phase insight banner -->
+        <div class="phase-insight-card fade-up" id="phaseInsightCard" style="margin:14px 20px 0; background:var(--lute-color);">
+          <div class="pic-phase" id="picPhaseLabel">LUTEAL PHASE · DAYS 16–28</div>
+          <div class="pic-title" id="picTitle">Your luteal weight is <em>not your real weight</em></div>
+          <div class="pic-body" id="picBody">Progesterone causes water retention of 2–5 lbs on average. This is biology, not fat gain. Comparing luteal-to-luteal across months reveals your true fat loss trend beneath the hormonal fluctuation.</div>
+          <div class="pic-stats-row">
+            <div class="pic-stat">
+              <div class="pic-stat-val" id="picAvgWeight">152.4</div>
+              <div class="pic-stat-lbl">Avg lbs this phase</div>
+            </div>
+            <div class="pic-stat">
+              <div class="pic-stat-val" id="picChange">−1.8</div>
+              <div class="pic-stat-lbl">vs last cycle</div>
+            </div>
+            <div class="pic-stat">
+              <div class="pic-stat-val" id="picWaterEst">+3.2</div>
+              <div class="pic-stat-lbl">Est. water lbs</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase month-over-month comparison -->
+        <div class="phase-compare-section">
+          <div class="pcs-header">
+            <div class="pcs-title" id="pcsTitle">Luteal Average — Month over Month</div>
+            <div class="pcs-badge" id="pcsBadge" style="background:var(--lute-color);">↓ Trending down</div>
+          </div>
+          <div class="phase-month-stack" id="phaseMonthStack">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Full cycle chart -->
+        <div class="cycle-chart-section fade-up">
+          <div class="cycle-chart-header">
+            <div class="cycle-chart-title">This Cycle — Daily Weight</div>
+          </div>
+          <div class="cycle-chart-sub">Phase bands show where hormonal water weight is expected</div>
+          <div class="chart-area" id="cycleChartArea">
+            <svg id="cycleChartSvg" width="100%" height="160" viewBox="0 0 400 160" preserveAspectRatio="none">
+              <!-- Phase bands -->
+              <rect x="0"   y="0" width="57"  height="160" fill="#D97B6C" opacity="0.08"/>
+              <rect x="57"  y="0" width="100" height="160" fill="#6B9E8B" opacity="0.08"/>
+              <rect x="157" y="0" width="57"  height="160" fill="#E8A87C" opacity="0.08"/>
+              <rect x="214" y="0" width="186" height="160" fill="#9B7EC8" opacity="0.08"/>
+              <!-- Phase labels -->
+              <text x="8"   y="14" font-size="8" fill="#D97B6C" opacity="0.7" font-family="DM Sans">Mens</text>
+              <text x="65"  y="14" font-size="8" fill="#6B9E8B" opacity="0.7" font-family="DM Sans">Follicular</text>
+              <text x="162" y="14" font-size="8" fill="#E8A87C" opacity="0.7" font-family="DM Sans">Ovul</text>
+              <text x="220" y="14" font-size="8" fill="#9B7EC8" opacity="0.7" font-family="DM Sans">Luteal</text>
+              <!-- Grid lines -->
+              <line x1="0" y1="40"  x2="400" y2="40"  stroke="rgba(139,94,82,0.08)" stroke-width="1"/>
+              <line x1="0" y1="80"  x2="400" y2="80"  stroke="rgba(139,94,82,0.08)" stroke-width="1"/>
+              <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(139,94,82,0.08)" stroke-width="1"/>
+              <!-- Weight labels -->
+              <text x="2" y="38"  font-size="7" fill="rgba(139,94,82,0.5)" font-family="DM Sans">155</text>
+              <text x="2" y="78"  font-size="7" fill="rgba(139,94,82,0.5)" font-family="DM Sans">153</text>
+              <text x="2" y="118" font-size="7" fill="rgba(139,94,82,0.5)" font-family="DM Sans">151</text>
+              <!-- Actual weight line (cycle day 1-28) -->
+              <polyline id="weightLine" points="" fill="none" stroke="var(--terracotta)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Trend line -->
+              <line id="trendLine" x1="0" y1="100" x2="400" y2="80" stroke="rgba(92,61,46,0.2)" stroke-width="1.5" stroke-dasharray="4,3"/>
+              <!-- Today dot -->
+              <circle id="todayDot" cx="200" cy="75" r="5" fill="var(--terracotta)" stroke="white" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="chart-legend-row">
+            <div class="cl-item"><div class="cl-dot" style="background:var(--terracotta);"></div>Daily weight</div>
+            <div class="cl-item"><div class="cl-dot" style="background:rgba(92,61,46,0.4);width:16px;height:2px;border-radius:0;"></div>Trend</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--mens-color);"></div>Menstrual</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--foll-color);"></div>Follicular</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--ovul-color);"></div>Ovulation</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--lute-color);"></div>Luteal</div>
+          </div>
+        </div>
+
+        <!-- Phase averages summary -->
+        <div style="margin:16px 20px 0; background:white; border-radius:20px; border:1px solid rgba(242,196,176,0.3); padding:18px;">
+          <div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:600;color:var(--bark);margin-bottom:14px;">Phase Averages — Current Cycle</div>
+          <div class="phase-progress-mini">
+            <div class="ppm-title">Average weight per phase (lbs)</div>
+            <div class="ppm-row">
+              <div class="ppm-phase">🌱 Menstrual</div>
+              <div class="ppm-bar-bg"><div class="ppm-bar-fill" style="width:72%;background:var(--mens-color);opacity:0.7;"></div></div>
+              <div class="ppm-val" style="color:var(--mens-color);">149.8</div>
+            </div>
+            <div class="ppm-row">
+              <div class="ppm-phase">☀️ Follicular</div>
+              <div class="ppm-bar-bg"><div class="ppm-bar-fill" style="width:68%;background:var(--foll-color);"></div></div>
+              <div class="ppm-val" style="color:var(--foll-color);">148.2</div>
+            </div>
+            <div class="ppm-row">
+              <div class="ppm-phase">✨ Ovulation</div>
+              <div class="ppm-bar-bg"><div class="ppm-bar-fill" style="width:76%;background:var(--ovul-color);"></div></div>
+              <div class="ppm-val" style="color:var(--ovul-color);">150.6</div>
+            </div>
+            <div class="ppm-row">
+              <div class="ppm-phase">🌙 Luteal</div>
+              <div class="ppm-bar-bg"><div class="ppm-bar-fill" style="width:88%;background:var(--lute-color);"></div></div>
+              <div class="ppm-val" style="color:var(--lute-color);">152.4</div>
+            </div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(242,196,176,0.3);font-size:0.8rem;color:var(--soft-brown);font-weight:300;line-height:1.6;">
+              🔑 <strong style="color:var(--terracotta);">True fat loss</strong> = compare your follicular average month over month. That phase has the least hormonal water noise.
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's cycle log -->
+        <div class="cycle-log-card">
+          <div class="clc-header">
+            <div class="clc-title">Log Weight — Today</div>
+            <div class="clc-phase-tag" style="background:var(--lute-color);">🌙 Luteal · Day 14</div>
+          </div>
+          <div class="clc-body">
+
+            <div class="weight-entry-row">
+              <input class="weight-entry-big" type="number" step="0.1" placeholder="152.0" id="cycleWeightInput">
+              <div class="weight-context-col">
+                <div class="wc-item">📍 Luteal phase</div>
+                <div class="wc-item">+2–4 lbs water</div>
+                <div class="wc-item">Normal range</div>
+              </div>
+            </div>
+
+            <!-- Context fields -->
+            <div class="context-grid">
+              <div class="ctx-field">
+                <div class="ctx-label">Time of weigh-in</div>
+                <input class="ctx-input" type="time" value="07:15">
+              </div>
+              <div class="ctx-field">
+                <div class="ctx-label">Clothed?</div>
+                <select class="ctx-input">
+                  <option>Nude / Underwear</option>
+                  <option>Light PJs</option>
+                  <option>Clothed</option>
+                </select>
+              </div>
+              <div class="ctx-field">
+                <div class="ctx-label">After bathroom?</div>
+                <select class="ctx-input">
+                  <option selected>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div class="ctx-field">
+                <div class="ctx-label">Before eating?</div>
+                <select class="ctx-input">
+                  <option selected>Yes — fasted</option>
+                  <option>No — ate first</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Context tags that affect weight -->
+            <div>
+              <div style="font-size:0.7rem;color:var(--rose);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">What might be affecting today's reading?</div>
+              <div class="ctx-tags">
+                <button class="ctx-tag active" onclick="this.classList.toggle('active')">💧 High sodium yesterday</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">🍺 Alcohol</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">😴 Poor sleep</button>
+                <button class="ctx-tag active" onclick="this.classList.toggle('active')">🌙 Luteal bloat</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">✈️ Travel</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">🍕 Cheat meal</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">💪 Heavy workout</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">🤒 Sick / inflammation</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">⏱️ Fasted longer</button>
+                <button class="ctx-tag" onclick="this.classList.toggle('active')">🩸 Period started</button>
+              </div>
+            </div>
+
+            <!-- Extra vitals -->
+            <div class="context-grid">
+              <div class="ctx-field">
+                <div class="ctx-label">Waist (inches)</div>
+                <input class="ctx-input" type="number" step="0.25" placeholder="31.5">
+              </div>
+              <div class="ctx-field">
+                <div class="ctx-label">Hip (inches)</div>
+                <input class="ctx-input" type="number" step="0.25" placeholder="39.0">
+              </div>
+              <div class="ctx-field">
+                <div class="ctx-label">Bust (inches)</div>
+                <input class="ctx-input" type="number" step="0.25" placeholder="36.5">
+              </div>
+              <div class="ctx-field">
+                <div class="ctx-label">Thigh (inches)</div>
+                <input class="ctx-input" type="number" step="0.25" placeholder="23.0">
+              </div>
+            </div>
+
+            <div class="ctx-field">
+              <div class="ctx-label">Notes</div>
+              <textarea class="ctx-input" rows="2" placeholder="Anything to note about today's weigh-in…" style="resize:none;"></textarea>
+            </div>
+
+            <button class="save-btn" onclick="saveWeight('cycle')">Save Weight Entry ✓</button>
+          </div>
+        </div>
+
+      </div><!-- end cycleMode -->
+
+      <!-- ── SIMPLE MODE ── -->
+      <div id="simpleMode">
+
+        <div class="simple-hero">
+          <div class="simple-hero-lbl">Current Weight</div>
+          <div class="simple-weight-display"><sup>1</sup><span id="simpleWeightDisplay">52.4</span></div>
+          <div class="simple-weight-unit">lbs · This morning</div>
+          <div class="simple-change">
+            <span class="simple-change-val">↓ 4.2 lbs</span>
+            <span class="simple-change-lbl">since you started</span>
+          </div>
+        </div>
+
+        <!-- Simple chart -->
+        <div class="simple-chart-wrap fade-up">
+          <div class="chart-title">Last 30 Days</div>
+          <div class="simple-chart">
+            <svg class="chart-svg" viewBox="0 0 380 110" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="simpleGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#C25E4A" stop-opacity="0.15"/>
+                  <stop offset="100%" stop-color="#C25E4A" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="30"  x2="380" y2="30"  stroke="rgba(139,94,82,0.07)" stroke-width="1"/>
+              <line x1="0" y1="60"  x2="380" y2="60"  stroke="rgba(139,94,82,0.07)" stroke-width="1"/>
+              <line x1="0" y1="90"  x2="380" y2="90"  stroke="rgba(139,94,82,0.07)" stroke-width="1"/>
+              <text x="2" y="28"  font-size="8" fill="rgba(139,94,82,0.4)" font-family="DM Sans">156</text>
+              <text x="2" y="58"  font-size="8" fill="rgba(139,94,82,0.4)" font-family="DM Sans">154</text>
+              <text x="2" y="88"  font-size="8" fill="rgba(139,94,82,0.4)" font-family="DM Sans">152</text>
+              <polygon points="20,85 40,80 60,88 80,75 100,78 120,70 140,73 160,65 180,68 200,62 220,70 240,58 260,62 280,55 300,58 320,52 340,55 360,48 380,50 380,110 20,110" fill="url(#simpleGrad)"/>
+              <polyline points="20,85 40,80 60,88 80,75 100,78 120,70 140,73 160,65 180,68 200,62 220,70 240,58 260,62 280,55 300,58 320,52 340,55 360,48 380,50" fill="none" stroke="#C25E4A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="380" cy="50" r="5" fill="#C25E4A" stroke="white" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Simple recent entries -->
+        <div class="simple-chart-wrap" style="margin-top:0;">
+          <div class="chart-title" style="margin-bottom:12px;">Recent Entries</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;">
+              <div style="font-size:0.85rem;color:var(--soft-brown);">Today · May 25</div>
+              <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bark);">152.4 lbs</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;">
+              <div style="font-size:0.85rem;color:var(--soft-brown);">May 24</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.75rem;color:var(--sage-dark);">↓ 0.2</span>
+                <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bark);">152.6 lbs</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;">
+              <div style="font-size:0.85rem;color:var(--soft-brown);">May 23</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.75rem;color:var(--terracotta);">↑ 0.8</span>
+                <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bark);">152.8 lbs</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;">
+              <div style="font-size:0.85rem;color:var(--soft-brown);">May 22</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.75rem;color:var(--terracotta);">↑ 1.4</span>
+                <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bark);">152.0 lbs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simple log card -->
+        <div class="simple-log-card">
+          <div class="simple-log-header">
+            <div class="simple-log-title">Log Today's Weight</div>
+            <div style="font-size:0.78rem;color:var(--terracotta);font-weight:500;">May 25</div>
+          </div>
+          <div class="simple-log-body">
+            <div class="big-input-wrap">
+              <input class="big-weight-input" type="number" step="0.1" placeholder="152.0" id="simpleWeightInput">
+              <div class="unit-toggle">
+                <button class="unit-btn active" onclick="setUnit(this,'lbs')">lbs</button>
+                <button class="unit-btn" onclick="setUnit(this,'kg')">kg</button>
+              </div>
+            </div>
+            <div class="simple-extras">
+              <div class="s-field"><div class="s-label">Waist (in)</div><input class="s-input" type="number" step="0.25" placeholder="31.5"></div>
+              <div class="s-field"><div class="s-label">Hip (in)</div><input class="s-input" type="number" step="0.25" placeholder="39.0"></div>
+              <div class="s-field"><div class="s-label">Sleep (hrs)</div><input class="s-input" type="number" step="0.5" placeholder="7.5"></div>
+              <div class="s-field"><div class="s-label">Water (oz)</div><input class="s-input" type="number" placeholder="64"></div>
+            </div>
+            <textarea class="s-input" rows="2" placeholder="Notes…" style="resize:none;"></textarea>
+            <button class="save-btn" onclick="saveWeight('simple')">Save ✓</button>
+          </div>
+        </div>
+
+      </div><!-- end simpleMode -->
+    </div><!-- end panel-cycle -->
+
+
+    <!-- ══════════════════════════════════════
+         ATHLETE PANEL
+    ══════════════════════════════════════ -->
+    <div class="panel" id="panel-athlete">
+      <div class="athlete-panel">
+
+        <!-- Hero -->
+        <div class="athlete-hero">
+          <div class="athlete-badge">⚡ Athlete Mode</div>
+          <h2 class="athlete-title">Train <em>with</em> your<br>cycle, not against it</h2>
+          <p class="athlete-subtitle">Cycle-adjusted macros, cut/bulk periodization, and phase-specific training recommendations for female athletes.</p>
+        </div>
+
+        <!-- Cut / Bulk / Maintain toggle -->
+        <div class="cb-toggle-row">
+          <button class="cb-btn cut active" onclick="setCBMode(this,'cut')" id="btn-cut">🔥 Cut</button>
+          <button class="cb-btn bulk" onclick="setCBMode(this,'bulk')" id="btn-bulk">💪 Bulk</button>
+          <button class="cb-btn maintain" onclick="setCBMode(this,'maintain')" id="btn-maintain">⚖️ Maintain</button>
+        </div>
+
+        <!-- Athlete stats -->
+        <div class="athlete-stats">
+          <div class="a-stat-card">
+            <div class="a-stat-label">Current Weight</div>
+            <div class="a-stat-val">148<span style="font-size:1rem;"> lbs</span></div>
+            <div class="a-stat-sub">Goal: 140 lbs · Cut</div>
+            <div class="a-stat-bar"><div class="a-stat-bar-fill" style="width:72%;background:var(--athlete-accent);"></div></div>
+          </div>
+          <div class="a-stat-card">
+            <div class="a-stat-label">Body Fat % (est)</div>
+            <div class="a-stat-val">22<span style="font-size:1rem;">%</span></div>
+            <div class="a-stat-sub">Athletic: 16–22%</div>
+            <div class="a-stat-bar"><div class="a-stat-bar-fill" style="width:78%;background:var(--athlete-gold);"></div></div>
+          </div>
+          <div class="a-stat-card">
+            <div class="a-stat-label">TDEE (today)</div>
+            <div class="a-stat-val">2,140<span style="font-size:0.9rem;"> cal</span></div>
+            <div class="a-stat-sub">Luteal +150 cal adj.</div>
+            <div class="a-stat-bar"><div class="a-stat-bar-fill" style="width:65%;background:var(--athlete-green);"></div></div>
+          </div>
+          <div class="a-stat-card">
+            <div class="a-stat-label">Cycle Day</div>
+            <div class="a-stat-val">14<span style="font-size:1rem;"> / 28</span></div>
+            <div class="a-stat-sub">🌙 Early Luteal</div>
+            <div class="a-stat-bar"><div class="a-stat-bar-fill" style="width:50%;background:var(--lute-color);"></div></div>
+          </div>
+        </div>
+
+        <!-- Macro targets -->
+        <div class="macro-section">
+          <div class="macro-section-title">Today's Macro Targets <span id="modeTagDisplay" style="font-size:0.75rem;background:rgba(233,69,96,0.2);color:var(--athlete-accent);padding:3px 10px;border-radius:50px;font-family:'DM Sans',sans-serif;font-weight:500;vertical-align:middle;margin-left:6px;">Cut</span></div>
+          <div class="macro-grid">
+            <div class="macro-card">
+              <div class="macro-icon">🥩</div>
+              <div class="macro-name">Protein</div>
+              <div class="macro-val" id="macroProtein">148</div>
+              <div class="macro-unit">grams / day</div>
+              <div class="macro-pct-bar" style="background:rgba(233,69,96,0.3);"><div style="height:100%;width:35%;background:var(--athlete-accent);border-radius:50px;"></div></div>
+            </div>
+            <div class="macro-card">
+              <div class="macro-icon">🌾</div>
+              <div class="macro-name">Carbs</div>
+              <div class="macro-val" id="macroCarbs">150</div>
+              <div class="macro-unit">grams / day</div>
+              <div class="macro-pct-bar" style="background:rgba(245,166,35,0.3);"><div style="height:100%;width:35%;background:var(--athlete-gold);border-radius:50px;"></div></div>
+            </div>
+            <div class="macro-card">
+              <div class="macro-icon">🥑</div>
+              <div class="macro-name">Fat</div>
+              <div class="macro-val" id="macroFat">58</div>
+              <div class="macro-unit">grams / day</div>
+              <div class="macro-pct-bar" style="background:rgba(76,175,125,0.3);"><div style="height:100%;width:30%;background:var(--athlete-green);border-radius:50px;"></div></div>
+            </div>
+            <div class="macro-card">
+              <div class="macro-icon">🔥</div>
+              <div class="macro-name">Calories</div>
+              <div class="macro-val" id="macroCalories">1,740</div>
+              <div class="macro-unit">target / day</div>
+              <div class="macro-pct-bar" style="background:rgba(255,255,255,0.08);"><div style="height:100%;width:81%;background:rgba(255,255,255,0.2);border-radius:50px;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cycle-adjusted macro notes -->
+        <div class="cycle-macro-note">
+          <div class="cmn-label">Cycle-Adjusted Macro Strategy</div>
+          <div class="cmn-row"><span class="cmn-phase">🌱 Menstrual (D1–5)</span><span class="cmn-adj flat">Maintenance calories</span></div>
+          <div class="cmn-row"><span class="cmn-phase">☀️ Follicular (D6–13)</span><span class="cmn-adj down">↓ 200–300 cal deficit</span></div>
+          <div class="cmn-row"><span class="cmn-phase">✨ Ovulation (D14–16)</span><span class="cmn-adj down">↓ 150–250 cal deficit</span></div>
+          <div class="cmn-row"><span class="cmn-phase">🌙 Luteal (D17–28)</span><span class="cmn-adj up">↑ 100–150 cal above cut</span></div>
+          <div class="cmn-note">During the luteal phase your metabolism runs ~150–300 cal/day faster. Eating at a severe deficit in this phase raises cortisol, increases muscle breakdown, and worsens PMS. A smaller deficit (or maintenance) in the luteal phase protects muscle and preserves hormonal health — and still produces fat loss when combined with follicular-phase cuts.</div>
+        </div>
+
+        <!-- Training log -->
+        <div class="training-section">
+          <div class="training-section-title">Today's Training Log</div>
+          <div class="training-card">
+            <div class="tc-header">
+              <div class="tc-day">May 25, 2026 · Cycle Day 14</div>
+              <div class="tc-phase-tag" style="background:rgba(155,126,200,0.2);color:var(--lute-color);">🌙 Early Luteal</div>
+            </div>
+            <div class="training-fields">
+              <div class="tf-row">
+                <div class="tf-field">
+                  <div class="tf-label">Training Type</div>
+                  <select class="tf-select">
+                    <option>Strength / Lifting</option>
+                    <option>HIIT</option>
+                    <option>Cardio (moderate)</option>
+                    <option>Yoga / Mobility</option>
+                    <option>Rest Day</option>
+                    <option>CrossFit</option>
+                    <option>Cycling</option>
+                    <option>Swimming</option>
+                    <option>Running</option>
+                    <option>Sport-specific</option>
+                  </select>
+                </div>
+                <div class="tf-field">
+                  <div class="tf-label">Duration (mins)</div>
+                  <input class="tf-input" type="number" placeholder="60">
+                </div>
+              </div>
+              <div class="tf-row">
+                <div class="tf-field">
+                  <div class="tf-label">Intensity (1–10)</div>
+                  <input class="tf-input" type="number" min="1" max="10" placeholder="7">
+                </div>
+                <div class="tf-field">
+                  <div class="tf-label">Calories burned</div>
+                  <input class="tf-input" type="number" placeholder="380">
+                </div>
+              </div>
+              <div class="tf-row">
+                <div class="tf-field">
+                  <div class="tf-label">Body Weight (lbs)</div>
+                  <input class="tf-input" type="number" step="0.1" placeholder="148.2">
+                </div>
+                <div class="tf-field">
+                  <div class="tf-label">Performance feel</div>
+                  <select class="tf-select">
+                    <option>💪 Strong / PR</option>
+                    <option selected>👍 Good</option>
+                    <option>😐 Average</option>
+                    <option>😩 Struggled</option>
+                    <option>🤒 Unwell</option>
+                  </select>
+                </div>
+              </div>
+              <div class="tf-field">
+                <div class="tf-label">Notes / PRs / Sets & Reps</div>
+                <input class="tf-input" type="text" placeholder="e.g. Squat 3×5 @ 135 lbs, felt strong…">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase-specific training guide -->
+        <div class="phase-guide">
+          <div class="phase-guide-title">Phase Training Guide for Athletes</div>
+
+          <div class="pg-card">
+            <div class="pg-card-header">
+              <div class="pg-phase-dot" style="background:var(--mens-color);"></div>
+              <div class="pg-phase-name">Menstrual Phase</div>
+              <div class="pg-phase-days" style="margin-left:auto;">Days 1–5</div>
+            </div>
+            <div class="pg-rows">
+              <div class="pg-row"><span class="pg-icon">🏋️</span>Lower intensity. Focus on mobility, yoga, light lifting. Your body is resetting.</div>
+              <div class="pg-row"><span class="pg-icon">🥩</span>Prioritize iron-rich foods. Blood loss depletes iron — critical for oxygen transport in athletes.</div>
+              <div class="pg-row"><span class="pg-icon">🎯</span><span style="color:var(--athlete-accent);">Cut strategy:</span> Eat at maintenance. Severe cuts during menstruation increase cortisol and delay recovery.</div>
+            </div>
+          </div>
+
+          <div class="pg-card">
+            <div class="pg-card-header">
+              <div class="pg-phase-dot" style="background:var(--foll-color);"></div>
+              <div class="pg-phase-name">Follicular Phase</div>
+              <div class="pg-phase-days" style="margin-left:auto;">Days 6–13</div>
+            </div>
+            <div class="pg-rows">
+              <div class="pg-row"><span class="pg-icon">⚡</span>Peak strength window. Your best week for PRs, heavy lifts, HIIT, and high-volume training.</div>
+              <div class="pg-row"><span class="pg-icon">🔥</span>Insulin sensitivity is high — carbs are used efficiently. Perfect time for carb-fueled performance.</div>
+              <div class="pg-row"><span class="pg-icon">🎯</span><span style="color:var(--athlete-accent);">Cut strategy:</span> Largest deficit here. Body handles caloric restriction best. Aim for 300–500 cal below TDEE.</div>
+              <div class="pg-row"><span class="pg-icon">💪</span><span style="color:var(--athlete-green);">Bulk strategy:</span> Best muscle synthesis window. Extra calories go to muscle, not fat, during this phase.</div>
+            </div>
+          </div>
+
+          <div class="pg-card">
+            <div class="pg-card-header">
+              <div class="pg-phase-dot" style="background:var(--ovul-color);"></div>
+              <div class="pg-phase-name">Ovulation Phase</div>
+              <div class="pg-phase-days" style="margin-left:auto;">Days 14–16</div>
+            </div>
+            <div class="pg-rows">
+              <div class="pg-row"><span class="pg-icon">🏃</span>Energy and coordination are high. Great for speed work, sport-specific training, and competition.</div>
+              <div class="pg-row"><span class="pg-icon">⚠️</span>Estrogen peak increases ligament laxity — slightly higher ACL/injury risk. Warm up thoroughly.</div>
+              <div class="pg-row"><span class="pg-icon">🎯</span><span style="color:var(--athlete-accent);">Cut strategy:</span> Moderate deficit 150–250 cal. Maintain performance while still in a cut.</div>
+            </div>
+          </div>
+
+          <div class="pg-card">
+            <div class="pg-card-header">
+              <div class="pg-phase-dot" style="background:var(--lute-color);"></div>
+              <div class="pg-phase-name">Luteal Phase</div>
+              <div class="pg-phase-days" style="margin-left:auto;">Days 17–28</div>
+            </div>
+            <div class="pg-rows">
+              <div class="pg-row"><span class="pg-icon">🌡️</span>Core body temp is elevated ~0.5–1°F. Endurance performance may feel harder. Allow for this.</div>
+              <div class="pg-row"><span class="pg-icon">💧</span>Increased water retention (2–5 lbs). This is not fat — don't panic at the scale or training weight.</div>
+              <div class="pg-row"><span class="pg-icon">🥩</span>Protein and fat needs increase. Cravings are real — your metabolism is running faster. Feed it well.</div>
+              <div class="pg-row"><span class="pg-icon">🎯</span><span style="color:var(--athlete-accent);">Cut strategy:</span> Pull back to 100–150 cal deficit max, or maintenance. Deep cuts here cause muscle loss, cortisol spikes, and worsen PMS/performance.</div>
+              <div class="pg-row"><span class="pg-icon">💪</span><span style="color:var(--athlete-green);">Bulk strategy:</span> Surplus works well here — elevated appetite makes eating more natural. Keep protein high.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Athlete body metrics -->
+        <div style="margin:8px 20px 0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px;">
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:white;margin-bottom:14px;">Body Composition Log</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="tf-field"><div class="tf-label">Body Weight (lbs)</div><input class="tf-input" type="number" step="0.1" placeholder="148.2"></div>
+            <div class="tf-field"><div class="tf-label">Body Fat % (if known)</div><input class="tf-input" type="number" step="0.1" placeholder="22.0"></div>
+            <div class="tf-field"><div class="tf-label">Waist (inches)</div><input class="tf-input" type="number" step="0.25" placeholder="28.5"></div>
+            <div class="tf-field"><div class="tf-label">Hip (inches)</div><input class="tf-input" type="number" step="0.25" placeholder="37.0"></div>
+            <div class="tf-field"><div class="tf-label">Thigh (inches)</div><input class="tf-input" type="number" step="0.25" placeholder="22.5"></div>
+            <div class="tf-field"><div class="tf-label">Arm (inches)</div><input class="tf-input" type="number" step="0.25" placeholder="12.0"></div>
+          </div>
+          <div style="margin-top:12px;">
+            <div class="tf-label" style="margin-bottom:6px;">Recovery feel today</div>
+            <div style="display:flex;gap:8px;">
+              <button class="ctx-tag" onclick="this.classList.toggle('active')" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);">💪 Fully recovered</button>
+              <button class="ctx-tag active" onclick="this.classList.toggle('active')" style="background:rgba(255,255,255,0.05);border-color:rgba(233,69,96,0.4);color:var(--athlete-accent);">😴 Fatigued</button>
+              <button class="ctx-tag" onclick="this.classList.toggle('active')" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);">🤕 Sore</button>
+              <button class="ctx-tag" onclick="this.classList.toggle('active')" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);">🧘 Rested</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="athlete-save-btn" onclick="saveWeight('athlete')">Save Athlete Log ✓</button>
+        <div style="height:8px;"></div>
+
+      </div><!-- end athlete-panel inner -->
+    </div><!-- end panel-athlete -->
+
+  </div><!-- end body -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <a href="herrhythm-landing.html" class="nav-item"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="herrhythm-app-diets.html" class="nav-item"><span class="nav-icon">🥗</span><span class="nav-label">Diet</span></a>
+    <a href="herrhythm-app-cycle.html" class="nav-item"><span class="nav-icon">🔄</span><span class="nav-label">Cycle</span></a>
+    <a href="#" class="nav-item active"><span class="nav-icon">⚖️</span><span class="nav-label">Weight</span></a>
+    <a href="herrhythm-qa.html" class="nav-item"><span class="nav-icon">💬</span><span class="nav-label">Q&amp;A</span></a>
+  </div>
+
+</div><!-- end app -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Phase data ──
+const phaseData = {
+  lute: {
+    color:'#9B7EC8', label:'LUTEAL PHASE · DAYS 16–28',
+    title:'Your luteal weight is <em>not your real weight</em>',
+    body:'Progesterone causes water retention of 2–5 lbs on average. This is biology, not fat gain. Comparing luteal-to-luteal across months reveals your true fat loss trend beneath the hormonal fluctuation.',
+    avgWeight:'152.4', change:'−1.8', water:'+3.2',
+    sectionTitle:'Luteal Average — Month over Month',
+    badge:'↓ Trending down',
+    months:[
+      { label:'Cycle 5', phase:'Luteal avg', avg:154.2, change:'', pct:100 },
+      { label:'Cycle 6', phase:'Luteal avg', avg:153.4, change:'↓ 0.8', pct:96, dir:'down' },
+      { label:'Cycle 7', phase:'Luteal avg', avg:152.6, change:'↓ 0.8', pct:92, dir:'down' },
+      { label:'Cycle 8', phase:'Luteal avg', avg:152.4, change:'↓ 0.2', pct:91, dir:'down' },
+    ]
+  },
+  mens: {
+    color:'#D97B6C', label:'MENSTRUAL PHASE · DAYS 1–5',
+    title:'Your <em>true baseline</em> weight',
+    body:'Menstrual phase weight is your lowest hormonal noise reading. Inflammation drops, water retention clears, and this number best reflects actual fat mass. Compare this month over month for real progress.',
+    avgWeight:'149.8', change:'−2.1', water:'+0.5',
+    sectionTitle:'Menstrual Average — Month over Month',
+    badge:'↓ Trending down',
+    months:[
+      { label:'Cycle 5', phase:'Menstrual avg', avg:151.9, change:'', pct:100 },
+      { label:'Cycle 6', phase:'Menstrual avg', avg:151.0, change:'↓ 0.9', pct:95, dir:'down' },
+      { label:'Cycle 7', phase:'Menstrual avg', avg:150.2, change:'↓ 0.8', pct:91, dir:'down' },
+      { label:'Cycle 8', phase:'Menstrual avg', avg:149.8, change:'↓ 0.4', pct:89, dir:'down' },
+    ]
+  },
+  foll: {
+    color:'#6B9E8B', label:'FOLLICULAR PHASE · DAYS 6–13',
+    title:'Your <em>cleanest</em> fat-loss signal',
+    body:'Follicular phase is your gold-standard weight comparison point. Estrogen is rising, water retention is minimal, hunger is naturally lower. Compare follicular average month over month for the most accurate fat loss measurement.',
+    avgWeight:'148.2', change:'−1.6', water:'+0.3',
+    sectionTitle:'Follicular Average — Month over Month',
+    badge:'↓ Trending down',
+    months:[
+      { label:'Cycle 5', phase:'Follicular avg', avg:149.8, change:'', pct:100 },
+      { label:'Cycle 6', phase:'Follicular avg', avg:149.1, change:'↓ 0.7', pct:95, dir:'down' },
+      { label:'Cycle 7', phase:'Follicular avg', avg:148.6, change:'↓ 0.5', pct:92, dir:'down' },
+      { label:'Cycle 8', phase:'Follicular avg', avg:148.2, change:'↓ 0.4', pct:90, dir:'down' },
+    ]
+  },
+  ovul: {
+    color:'#E8A87C', label:'OVULATION PHASE · DAYS 14–16',
+    title:'Brief spike — <em>don\'t panic</em>',
+    body:'A 1–3 lb spike around ovulation is driven by an estrogen surge and temporary fluid shift — not fat. Comparing ovulation-phase weights month over month still shows clear downward trends once you know what to look for.',
+    avgWeight:'150.6', change:'−1.5', water:'+1.8',
+    sectionTitle:'Ovulation Average — Month over Month',
+    badge:'↓ Trending down',
+    months:[
+      { label:'Cycle 5', phase:'Ovulation avg', avg:152.1, change:'', pct:100 },
+      { label:'Cycle 6', phase:'Ovulation avg', avg:151.4, change:'↓ 0.7', pct:96, dir:'down' },
+      { label:'Cycle 7', phase:'Ovulation avg', avg:151.0, change:'↓ 0.4', pct:94, dir:'down' },
+      { label:'Cycle 8', phase:'Ovulation avg', avg:150.6, change:'↓ 0.4', pct:91, dir:'down' },
+    ]
+  }
+};
+
+function selectPhase(btn, phase) {
+  document.querySelectorAll('.phase-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const d = phaseData[phase];
+  // Update insight card
+  document.getElementById('phaseInsightCard').style.background = d.color;
+  document.getElementById('picPhaseLabel').textContent = d.label;
+  document.getElementById('picTitle').innerHTML = d.title;
+  document.getElementById('picBody').textContent = d.body;
+  document.getElementById('picAvgWeight').textContent = d.avgWeight;
+  document.getElementById('picChange').textContent = d.change;
+  document.getElementById('picWaterEst').textContent = d.water;
+  // Update section header
+  document.getElementById('pcsTitle').textContent = d.sectionTitle;
+  document.getElementById('pcsBadge').textContent = d.badge;
+  document.getElementById('pcsBadge').style.background = d.color;
+  // Render month rows
+  renderMonthRows(d.months, d.color);
+}
+
+function renderMonthRows(months, color) {
+  const stack = document.getElementById('phaseMonthStack');
+  stack.innerHTML = '';
+  months.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'phase-month-row fade-up';
+    row.style.animationDelay = `${i * 0.07}s`;
+    const changeClass = m.dir === 'down' ? 'down' : m.dir === 'up' ? 'up' : 'flat';
+    const fillPct = Math.max(20, m.pct);
+    row.innerHTML = `
+      <div class="pmr-cycle-label">${m.label}</div>
+      <div class="pmr-bar-wrap">
+        <div class="pmr-phase-label" style="color:${color};">${m.phase}</div>
+        <div class="pmr-bar-bg"><div class="pmr-bar-fill" style="width:${fillPct}%;background:${color};opacity:0.6;"></div></div>
+      </div>
+      <div class="pmr-stats">
+        <div class="pmr-avg">${m.avg}</div>
+        <div class="pmr-change ${changeClass}">${m.change || 'Baseline'}</div>
+      </div>`;
+    stack.appendChild(row);
+  });
+  // Animate bars
+  setTimeout(() => {
+    stack.querySelectorAll('.pmr-bar-fill').forEach(b => {
+      const w = b.style.width; b.style.width = '0'; 
+      setTimeout(() => b.style.width = w, 50);
+    });
+  }, 50);
+}
+
+// ── Mode toggle (simple vs cycle-smart) ──
+function toggleMode() {
+  const isSimple = document.getElementById('modeToggle').checked;
+  document.getElementById('cycleMode').style.display = isSimple ? 'none' : 'block';
+  document.getElementById('simpleMode').style.display = isSimple ? 'block' : 'none';
+  document.getElementById('modeLabel').innerHTML = isSimple
+    ? '<strong>Simple</strong> daily tracking'
+    : '<strong>Cycle-Smart</strong> tracking';
+  document.getElementById('modeSubLabel').textContent = isSimple
+    ? 'Basic daily log — no cycle analysis'
+    : 'Comparing luteal → luteal, follicular → follicular for accurate progress';
+}
+
+// ── Panel switching ──
+function showPanel(panel) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${panel}`).classList.add('active');
+  document.getElementById('tab-cycle').classList.toggle('active', panel === 'cycle');
+  document.getElementById('tab-athlete').classList.toggle('active', panel === 'athlete');
+  document.getElementById('appBody').scrollTop = 0;
+}
+
+// ── Cut / Bulk toggle ──
+const macroPresets = {
+  cut:      { protein:148, carbs:150, fat:58,  calories:1740, tag:'Cut',      color:'var(--athlete-accent)' },
+  bulk:     { protein:155, carbs:280, fat:72,  calories:2480, tag:'Bulk',     color:'var(--athlete-green)' },
+  maintain: { protein:148, carbs:200, fat:65,  calories:2140, tag:'Maintain', color:'var(--athlete-gold)' }
+};
+
+function setCBMode(btn, mode) {
+  document.querySelectorAll('.cb-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const p = macroPresets[mode];
+  document.getElementById('macroProtein').textContent = p.protein;
+  document.getElementById('macroCarbs').textContent = p.carbs;
+  document.getElementById('macroFat').textContent = p.fat;
+  document.getElementById('macroCalories').textContent = p.calories.toLocaleString();
+  const tag = document.getElementById('modeTagDisplay');
+  tag.textContent = p.tag;
+  tag.style.color = p.color;
+  tag.style.background = `${p.color.replace(')',', 0.15)').replace('var(','rgba(').replace('--athlete-accent','233,69,96').replace('--athlete-green','76,175,125').replace('--athlete-gold','245,166,35')}`;
+}
+
+// ── Unit toggle ──
+function setUnit(btn, unit) {
+  document.querySelectorAll('.unit-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Draw weight line on cycle chart ──
+function drawCycleChart() {
+  // Sample data: 28 days, weight in lbs
+  const weights = [
+    151.2,150.8,150.4,149.9,149.6, // menstrual 1-5
+    149.2,148.8,148.5,148.3,148.0,148.2,148.6,149.0, // follicular 6-13
+    150.2,150.8,151.0, // ovulation 14-16
+    151.4,151.8,152.0,152.2,152.6,152.8,152.4,152.2,152.0,151.8,151.4,null,null // luteal 17-28 (null = not logged yet)
+  ];
+  const minW = 147, maxW = 156;
+  const svgW = 400, svgH = 160;
+  const padL = 18, padR = 8, padT = 20, padB = 10;
+  const w = svgW - padL - padR;
+  const h = svgH - padT - padB;
+  const xStep = w / 27;
+
+  const pts = weights.map((wt, i) => {
+    if(wt === null) return null;
+    const x = padL + i * xStep;
+    const y = padT + h - ((wt - minW) / (maxW - minW)) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).filter(Boolean);
+
+  document.getElementById('weightLine').setAttribute('points', pts.join(' '));
+
+  // Today dot at cycle day 14 (index 13)
+  const todayIdx = 13;
+  const todayX = padL + todayIdx * xStep;
+  const todayY = padT + h - ((weights[todayIdx] - minW) / (maxW - minW)) * h;
+  const dot = document.getElementById('todayDot');
+  dot.setAttribute('cx', todayX.toFixed(1));
+  dot.setAttribute('cy', todayY.toFixed(1));
+}
+
+// ── Save ──
+function saveWeight(mode) {
+  const msgs = { cycle:'✓ Weight logged with cycle context!', simple:'✓ Weight saved!', athlete:'✓ Athlete log saved!' };
+  showToast(msgs[mode] || '✓ Saved!');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  // Init phase data
+  selectPhase(document.querySelector('.phase-pill.active'), 'lute');
+  drawCycleChart();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>HerRhythm — Nutrition Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- ZXing barcode library for real QR/barcode scanning -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing.min.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  --blush: #F2C4B0;
+  --rose: #D97B6C;
+  --terracotta: #C25E4A;
+  --cream: #FDF6EE;
+  --warm-white: #FFF9F4;
+  --bark: #5C3D2E;
+  --soft-brown: #8B5E52;
+  --sage: #A8B5A0;
+  --sage-dark: #6B8F63;
+  --text: #3D2419;
+  --muted: #9E7B6F;
+  --card: #FFFFFF;
+  --mens: #D97B6C;
+  --foll: #6B9E8B;
+  --ovul: #E8A87C;
+  --lute: #9B7EC8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:#E8E0D8;color:var(--text);min-height:100vh;display:flex;justify-content:center;}
+
+.app{width:100%;max-width:480px;min-height:100vh;background:var(--warm-white);position:relative;box-shadow:0 0 80px rgba(92,61,46,0.18);display:flex;flex-direction:column;}
+
+/* ── TOP BAR ── */
+.top-bar{position:sticky;top:0;z-index:60;background:rgba(253,246,238,0.97);backdrop-filter:blur(20px);padding:14px 20px 10px;border-bottom:1px solid rgba(242,196,176,0.3);}
+.top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.app-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--terracotta);text-decoration:none;}
+.app-logo span{color:var(--bark);}
+.phase-chip{font-size:0.72rem;padding:4px 12px;border-radius:50px;font-weight:500;color:white;background:var(--lute);}
+
+/* Tab row */
+.tab-row{display:flex;gap:5px;}
+.tab-btn{flex:1;padding:8px 6px;border-radius:11px;border:1.5px solid rgba(242,196,176,0.35);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:500;color:var(--soft-brown);cursor:pointer;transition:all 0.22s;text-align:center;white-space:nowrap;}
+.tab-btn.active{background:var(--terracotta);border-color:var(--terracotta);color:white;}
+
+/* ── BODY ── */
+.body{flex:1;overflow-y:auto;padding-bottom:90px;}
+.body::-webkit-scrollbar{width:3px;}
+.body::-webkit-scrollbar-thumb{background:rgba(242,196,176,0.4);border-radius:4px;}
+
+/* ── PANELS ── */
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ══════════════════════════
+   DAILY LOG PANEL
+══════════════════════════ */
+
+/* Calorie ring hero */
+.cal-hero{padding:22px 20px 16px;display:flex;align-items:center;gap:20px;position:relative;overflow:hidden;}
+.cal-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 30% 50%,rgba(242,196,176,0.2) 0%,transparent 70%);}
+.cal-ring-wrap{position:relative;width:110px;height:110px;flex-shrink:0;}
+.cal-ring-svg{width:110px;height:110px;transform:rotate(-90deg);}
+.cal-ring-bg{fill:none;stroke:rgba(242,196,176,0.2);stroke-width:10;}
+.cal-ring-fill{fill:none;stroke-width:10;stroke-linecap:round;stroke:var(--terracotta);stroke-dasharray:283;stroke-dashoffset:283;transition:stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);}
+.cal-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.cal-ring-num{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--bark);line-height:1;}
+.cal-ring-lbl{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.cal-stats{flex:1;display:flex;flex-direction:column;gap:10px;position:relative;z-index:1;}
+.cal-stat-row{display:flex;justify-content:space-between;align-items:center;}
+.cal-stat-label{font-size:0.78rem;color:var(--soft-brown);}
+.cal-stat-val{font-size:0.85rem;font-weight:600;color:var(--bark);}
+.cal-bar-bg{height:5px;background:rgba(242,196,176,0.25);border-radius:50px;overflow:hidden;margin-top:2px;}
+.cal-bar-fill{height:100%;border-radius:50px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);}
+
+/* Cycle phase insight strip */
+.phase-insight-strip{margin:0 20px 14px;background:var(--lute);border-radius:16px;padding:14px 16px;position:relative;overflow:hidden;}
+.phase-insight-strip::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 90% 20%,rgba(255,255,255,0.1) 0%,transparent 70%);}
+.pis-label{font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:4px;}
+.pis-title{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:white;margin-bottom:3px;}
+.pis-body{font-size:0.78rem;color:rgba(255,255,255,0.65);line-height:1.5;font-weight:300;}
+
+/* Macro bars */
+.macro-section{margin:0 20px 14px;background:white;border-radius:18px;border:1px solid rgba(242,196,176,0.3);padding:16px;}
+.macro-section-title{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:600;color:var(--bark);margin-bottom:12px;}
+.macro-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.macro-row:last-child{margin-bottom:0;}
+.macro-name{font-size:0.78rem;color:var(--soft-brown);width:62px;flex-shrink:0;}
+.macro-bar-bg{flex:1;height:7px;background:rgba(242,196,176,0.2);border-radius:50px;overflow:hidden;}
+.macro-bar-fill{height:100%;border-radius:50px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);}
+.macro-nums{font-size:0.75rem;font-weight:600;color:var(--bark);min-width:70px;text-align:right;}
+
+/* Meals list */
+.meals-section{margin:0 20px 14px;}
+.meals-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.meals-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--bark);}
+.add-meal-btn{display:flex;align-items:center;gap:5px;font-size:0.78rem;color:var(--terracotta);font-weight:500;background:rgba(194,94,74,0.08);border:none;border-radius:50px;padding:5px 12px;cursor:pointer;transition:all 0.2s;}
+.add-meal-btn:hover{background:rgba(194,94,74,0.15);}
+
+.meal-card{background:white;border-radius:16px;border:1px solid rgba(242,196,176,0.3);margin-bottom:10px;overflow:hidden;}
+.meal-card-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background 0.2s;}
+.meal-card-header:hover{background:var(--cream);}
+.meal-time-badge{font-size:0.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:50px;color:white;}
+.meal-cal-total{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--bark);}
+.meal-chevron{font-size:0.8rem;color:var(--muted);transition:transform 0.3s;}
+.meal-card.open .meal-chevron{transform:rotate(180deg);}
+.meal-items{max-height:0;overflow:hidden;transition:max-height 0.4s ease;}
+.meal-card.open .meal-items{max-height:600px;}
+.meal-item{padding:10px 16px;border-top:1px solid rgba(242,196,176,0.2);display:flex;align-items:center;gap:10px;}
+.meal-item-icon{width:34px;height:34px;border-radius:10px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.meal-item-info{flex:1;}
+.meal-item-name{font-size:0.85rem;font-weight:500;color:var(--bark);margin-bottom:2px;}
+.meal-item-macros{font-size:0.72rem;color:var(--muted);}
+.meal-item-cal{font-size:0.85rem;font-weight:600;color:var(--terracotta);}
+.meal-item-actions{display:flex;gap:6px;}
+.mia-btn{width:28px;height:28px;border-radius:8px;border:1px solid rgba(242,196,176,0.4);background:var(--cream);cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;color:var(--soft-brown);}
+.mia-btn:hover{border-color:var(--rose);color:var(--terracotta);}
+.meal-add-row{padding:10px 16px;border-top:1px solid rgba(242,196,176,0.15);display:flex;gap:8px;}
+.meal-add-item-btn{flex:1;padding:8px;border-radius:10px;border:1.5px dashed rgba(242,196,176,0.5);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.meal-add-item-btn:hover{border-color:var(--rose);color:var(--terracotta);}
+
+/* Water tracker */
+.water-card{margin:0 20px 14px;background:white;border-radius:18px;border:1px solid rgba(242,196,176,0.3);padding:16px;}
+.water-title{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:600;color:var(--bark);margin-bottom:12px;}
+.water-glasses{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.water-glass{width:36px;height:36px;border-radius:10px;border:1.5px solid rgba(100,149,237,0.3);background:rgba(100,149,237,0.05);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all 0.2s;}
+.water-glass.filled{background:rgba(100,149,237,0.15);border-color:rgba(100,149,237,0.5);}
+.water-glass:hover{border-color:rgba(100,149,237,0.6);}
+.water-info{font-size:0.78rem;color:var(--muted);font-weight:300;}
+
+/* ══════════════════════════
+   SCANNER PANEL
+══════════════════════════ */
+.scanner-wrap{padding:20px;}
+.scanner-hero{background:var(--bark);border-radius:22px;padding:24px;text-align:center;position:relative;overflow:hidden;margin-bottom:16px;}
+.scanner-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 50% 30%,rgba(242,196,176,0.08) 0%,transparent 70%);}
+.scanner-hero-icon{font-size:2.5rem;margin-bottom:10px;position:relative;z-index:1;}
+.scanner-hero-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:white;margin-bottom:6px;position:relative;z-index:1;}
+.scanner-hero-title em{font-style:italic;color:var(--blush);}
+.scanner-hero-sub{font-size:0.82rem;color:rgba(255,255,255,0.5);font-weight:300;line-height:1.6;position:relative;z-index:1;}
+
+/* Camera viewfinder */
+.viewfinder-wrap{position:relative;border-radius:20px;overflow:hidden;background:#000;margin-bottom:16px;aspect-ratio:1;}
+#scanVideo{width:100%;height:100%;object-fit:cover;display:none;}
+.vf-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.vf-frame{width:65%;aspect-ratio:1;border:2px solid rgba(255,255,255,0.6);border-radius:16px;position:relative;}
+.vf-frame::before,.vf-frame::after{content:'';position:absolute;width:20px;height:20px;border-color:var(--terracotta);border-style:solid;}
+.vf-frame::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+.vf-frame::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+.vf-corners{position:absolute;inset:0;}
+.vf-corner{position:absolute;width:20px;height:20px;border-color:var(--terracotta);border-style:solid;}
+.vf-corner.tr{top:-2px;right:-2px;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+.vf-corner.bl{bottom:-2px;left:-2px;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+.scan-line{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--terracotta),transparent);animation:scanAnim 2s ease-in-out infinite;top:20%;}
+@keyframes scanAnim{0%,100%{top:20%;}50%{top:75%;}}
+.vf-placeholder{text-align:center;padding:20px;}
+.vf-placeholder-icon{font-size:3rem;margin-bottom:10px;opacity:0.4;}
+.vf-placeholder-text{font-size:0.85rem;color:rgba(255,255,255,0.4);font-weight:300;}
+
+.scan-btn{width:100%;padding:14px;border-radius:50px;border:none;background:var(--terracotta);color:white;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:500;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 16px rgba(194,94,74,0.25);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+.scan-btn:hover{background:var(--bark);transform:translateY(-1px);}
+.scan-btn.scanning{background:var(--sage-dark);animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 4px 16px rgba(107,143,99,0.3);}50%{box-shadow:0 4px 28px rgba(107,143,99,0.6);}}
+
+/* Manual barcode input */
+.manual-barcode{display:flex;gap:8px;margin-bottom:16px;}
+.barcode-input{flex:1;background:white;border:1.5px solid rgba(242,196,176,0.4);border-radius:14px;padding:12px 16px;font-family:'DM Sans',sans-serif;font-size:0.9rem;color:var(--text);outline:none;transition:border-color 0.2s;}
+.barcode-input:focus{border-color:var(--rose);}
+.barcode-input::placeholder{color:var(--muted);}
+.barcode-go-btn{padding:12px 18px;border-radius:14px;border:none;background:var(--bark);color:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.barcode-go-btn:hover{background:var(--terracotta);}
+
+/* Scanned result card */
+.scanned-result{background:white;border-radius:20px;border:1px solid rgba(242,196,176,0.3);overflow:hidden;display:none;}
+.scanned-result.show{display:block;animation:fadeUp 0.4s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.sr-header{padding:16px 18px;background:linear-gradient(135deg,var(--bark),#3d2a1e);display:flex;align-items:center;gap:12px;}
+.sr-icon{width:44px;height:44px;border-radius:12px;background:rgba(242,196,176,0.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.sr-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:white;}
+.sr-brand{font-size:0.78rem;color:rgba(255,255,255,0.5);}
+.sr-serving{font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:2px;}
+.sr-body{padding:16px 18px;}
+
+/* Nutrition tabs */
+.nutrition-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.nt-tab{flex:1;padding:7px;border-radius:10px;border:1.5px solid rgba(242,196,176,0.35);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:500;color:var(--soft-brown);cursor:pointer;transition:all 0.2s;text-align:center;}
+.nt-tab.active{background:var(--terracotta);border-color:var(--terracotta);color:white;}
+
+/* Macro grid */
+.macro-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.mg4-card{background:var(--cream);border-radius:12px;padding:10px 8px;text-align:center;}
+.mg4-val{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bark);}
+.mg4-unit{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.mg4-name{font-size:0.68rem;color:var(--soft-brown);margin-top:2px;}
+
+/* Vitamins & minerals table */
+.vit-panel,.min-panel{display:none;}
+.vit-panel.active,.min-panel.active{display:block;}
+.nutrient-table{width:100%;border-collapse:collapse;}
+.nutrient-table tr{border-bottom:1px solid rgba(242,196,176,0.2);}
+.nutrient-table tr:last-child{border-bottom:none;}
+.nutrient-table td{padding:8px 4px;font-size:0.82rem;}
+.nt-name{color:var(--soft-brown);}
+.nt-val{font-weight:600;color:var(--bark);text-align:right;}
+.nt-dv{color:var(--muted);text-align:right;font-size:0.72rem;}
+.nt-bar-cell{width:80px;padding-left:8px;}
+.nt-mini-bar{height:4px;background:rgba(242,196,176,0.25);border-radius:50px;overflow:hidden;}
+.nt-mini-fill{height:100%;border-radius:50px;background:var(--sage-dark);}
+.nt-mini-fill.high{background:var(--terracotta);}
+.nt-mini-fill.med{background:var(--ovul);}
+
+/* Serving adjuster */
+.serving-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;background:var(--cream);border-radius:12px;padding:10px 14px;}
+.serving-label{font-size:0.8rem;color:var(--soft-brown);flex:1;}
+.serving-counter{display:flex;align-items:center;gap:10px;}
+.s-btn{width:32px;height:32px;border-radius:10px;border:1.5px solid rgba(242,196,176,0.4);background:white;cursor:pointer;font-size:1.1rem;color:var(--soft-brown);display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.s-btn:hover{border-color:var(--rose);color:var(--terracotta);}
+.s-val{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--bark);min-width:30px;text-align:center;}
+
+/* Score badge */
+.score-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.score-badge{padding:6px 14px;border-radius:50px;font-size:0.8rem;font-weight:600;}
+.score-good{background:rgba(107,143,99,0.15);color:var(--sage-dark);border:1px solid rgba(107,143,99,0.3);}
+.score-ok{background:rgba(232,168,124,0.2);color:#B8783A;border:1px solid rgba(232,168,124,0.4);}
+.score-bad{background:rgba(194,94,74,0.12);color:var(--terracotta);border:1px solid rgba(194,94,74,0.25);}
+.score-note{font-size:0.78rem;color:var(--soft-brown);font-weight:300;line-height:1.5;}
+
+/* Action buttons */
+.sr-actions{display:flex;gap:8px;padding:0 18px 18px;}
+.sr-add-btn{flex:2;padding:12px;border-radius:50px;border:none;background:var(--terracotta);color:white;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;transition:all 0.25s;}
+.sr-add-btn:hover{background:var(--bark);}
+.sr-swap-btn{flex:1;padding:12px;border-radius:50px;border:1.5px solid rgba(242,196,176,0.4);background:transparent;color:var(--bark);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;transition:all 0.2s;}
+.sr-swap-btn:hover{border-color:var(--terracotta);color:var(--terracotta);}
+
+/* ══════════════════════════
+   SEARCH / ADD PANEL
+══════════════════════════ */
+.search-panel-wrap{padding:16px 20px;}
+.search-bar-wrap{position:relative;margin-bottom:14px;}
+.search-icon-pos{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;color:var(--muted);pointer-events:none;}
+.food-search-input{width:100%;background:white;border:1.5px solid rgba(242,196,176,0.4);border-radius:16px;padding:12px 14px 12px 42px;font-family:'DM Sans',sans-serif;font-size:0.9rem;color:var(--text);outline:none;transition:border-color 0.2s;}
+.food-search-input:focus{border-color:var(--rose);}
+.food-search-input::placeholder{color:var(--muted);}
+
+/* Category chips */
+.cat-chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px;}
+.cat-chips::-webkit-scrollbar{display:none;}
+.cat-chip{flex-shrink:0;padding:6px 14px;border-radius:50px;border:1.5px solid rgba(242,196,176,0.35);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.76rem;font-weight:400;color:var(--soft-brown);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.cat-chip:hover{border-color:var(--rose);}
+.cat-chip.active{background:var(--terracotta);border-color:var(--terracotta);color:white;}
+
+/* Food results */
+.food-result-item{background:white;border-radius:14px;border:1px solid rgba(242,196,176,0.3);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all 0.2s;}
+.food-result-item:hover{box-shadow:0 4px 16px rgba(194,94,74,0.1);transform:translateY(-1px);border-color:rgba(217,123,108,0.4);}
+.fri-icon{width:40px;height:40px;border-radius:12px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.fri-info{flex:1;}
+.fri-name{font-size:0.88rem;font-weight:500;color:var(--bark);margin-bottom:2px;}
+.fri-detail{font-size:0.72rem;color:var(--muted);}
+.fri-cal{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--terracotta);flex-shrink:0;}
+.fri-add-btn{width:30px;height:30px;border-radius:9px;border:none;background:var(--terracotta);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all 0.2s;flex-shrink:0;}
+.fri-add-btn:hover{background:var(--bark);transform:scale(1.08);}
+
+/* Manual add form */
+.manual-add-card{background:white;border-radius:20px;border:1px solid rgba(242,196,176,0.35);overflow:hidden;margin-top:6px;}
+.mac-header{padding:14px 18px;border-bottom:1px solid rgba(242,196,176,0.2);background:var(--cream);display:flex;align-items:center;justify-content:space-between;}
+.mac-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--bark);}
+.mac-toggle{font-size:0.78rem;color:var(--terracotta);cursor:pointer;font-weight:500;}
+.mac-body{padding:16px 18px;display:none;flex-direction:column;gap:12px;}
+.mac-body.open{display:flex;}
+.mac-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mac-field{display:flex;flex-direction:column;gap:5px;}
+.mac-label{font-size:0.7rem;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.5px;}
+.mac-input{background:var(--cream);border:1.5px solid rgba(242,196,176,0.35);border-radius:11px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--text);outline:none;transition:border-color 0.2s;width:100%;}
+.mac-input:focus{border-color:var(--rose);background:white;}
+.mac-input::placeholder{color:var(--muted);}
+.mac-full{grid-column:1/-1;}
+.mac-save-btn{width:100%;padding:12px;border-radius:50px;border:none;background:var(--bark);color:white;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;transition:all 0.25s;margin-top:4px;}
+.mac-save-btn:hover{background:var(--terracotta);}
+
+/* ══════════════════════════
+   SWAPS PANEL
+══════════════════════════ */
+.swaps-wrap{padding:16px 20px;}
+.swaps-hero{background:linear-gradient(135deg,var(--sage-dark),#4a7a53);border-radius:20px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden;}
+.swaps-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 80% 20%,rgba(255,255,255,0.1) 0%,transparent 70%);}
+.swaps-hero-label{font-size:0.68rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:6px;}
+.swaps-hero-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:white;margin-bottom:4px;}
+.swaps-hero-sub{font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;font-weight:300;}
+
+/* Phase-specific swap note */
+.swap-phase-note{background:rgba(155,126,200,0.1);border:1px solid rgba(155,126,200,0.25);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:0.82rem;color:var(--soft-brown);line-height:1.6;}
+.swap-phase-note strong{color:var(--lute);}
+
+/* Swap card */
+.swap-card{background:white;border-radius:18px;border:1px solid rgba(242,196,176,0.3);margin-bottom:12px;overflow:hidden;}
+.swap-card-header{padding:14px 16px;border-bottom:1px solid rgba(242,196,176,0.2);display:flex;align-items:center;gap:10px;}
+.swap-card-icon{font-size:1.4rem;}
+.swap-card-title{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:600;color:var(--bark);}
+.swap-card-sub{font-size:0.75rem;color:var(--muted);}
+.swap-reason{font-size:0.72rem;padding:3px 10px;border-radius:50px;font-weight:500;}
+
+.swap-items{padding:8px 0;}
+.swap-item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(242,196,176,0.15);}
+.swap-item:last-child{border-bottom:none;}
+.swap-arrow{font-size:1rem;color:var(--sage-dark);}
+.swap-from{display:flex;flex-direction:column;}
+.swap-to{display:flex;flex-direction:column;}
+.swap-food-name{font-size:0.82rem;font-weight:500;color:var(--bark);}
+.swap-food-name.original{color:var(--muted);text-decoration:line-through;font-weight:400;}
+.swap-food-detail{font-size:0.7rem;color:var(--muted);}
+.swap-food-detail.better{color:var(--sage-dark);}
+.swap-benefit{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.swap-benefit-tag{font-size:0.65rem;padding:2px 8px;border-radius:50px;background:rgba(107,143,99,0.1);color:var(--sage-dark);font-weight:500;white-space:nowrap;}
+.swap-add-btn{padding:5px 12px;border-radius:50px;border:1.5px solid rgba(107,143,99,0.35);background:transparent;font-size:0.72rem;color:var(--sage-dark);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all 0.2s;margin-top:4px;white-space:nowrap;}
+.swap-add-btn:hover{background:rgba(107,143,99,0.1);}
+
+/* Diet filter for swaps */
+.diet-filter-row{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;}
+.diet-filter-row::-webkit-scrollbar{display:none;}
+.df-chip{flex-shrink:0;padding:5px 12px;border-radius:50px;border:1.5px solid rgba(242,196,176,0.35);background:transparent;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--soft-brown);cursor:pointer;transition:all 0.2s;}
+.df-chip.active{background:var(--sage-dark);border-color:var(--sage-dark);color:white;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:480px;max-width:100vw;background:rgba(253,246,238,0.97);backdrop-filter:blur(20px);border-top:1px solid rgba(242,196,176,0.3);padding:10px 20px 20px;display:flex;justify-content:space-around;z-index:60;}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;text-decoration:none;padding:6px 10px;border-radius:12px;transition:all 0.2s;min-width:52px;}
+.nav-item:hover{background:rgba(242,196,176,0.2);}
+.nav-item.active{background:rgba(242,196,176,0.25);}
+.nav-icon{font-size:1.25rem;}
+.nav-label{font-size:0.64rem;font-weight:400;color:var(--muted);}
+.nav-item.active .nav-label{color:var(--terracotta);font-weight:500;}
+
+/* ── MODAL (food detail / swap detail) ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(61,36,25,0.5);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal-sheet{width:100%;max-width:480px;background:white;border-radius:24px 24px 0 0;padding:20px;max-height:90vh;overflow-y:auto;animation:slideUp 0.35s cubic-bezier(0.4,0,0.2,1);}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-handle{width:36px;height:4px;background:rgba(242,196,176,0.5);border-radius:50px;margin:0 auto 16px;}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--bark);margin-bottom:14px;}
+.modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(242,196,176,0.4);background:var(--cream);cursor:pointer;font-size:1rem;color:var(--soft-brown);display:flex;align-items:center;justify-content:center;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--bark);color:white;padding:11px 22px;border-radius:50px;font-size:0.85rem;box-shadow:0 8px 28px rgba(92,61,46,0.3);z-index:300;opacity:0;transition:all 0.3s ease;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-row">
+      <a href="herrhythm-landing.html" class="app-logo">Her<span>Rhythm</span></a>
+      <span class="phase-chip">🌙 Luteal · Day 14</span>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="showTab('daily')" id="tab-daily">📋 Today</button>
+      <button class="tab-btn" onclick="showTab('scanner')" id="tab-scanner">📷 Scanner</button>
+      <button class="tab-btn" onclick="showTab('search')" id="tab-search">🔍 Add Food</button>
+      <button class="tab-btn" onclick="showTab('swaps')" id="tab-swaps">🔄 Swaps</button>
+    </div>
+  </div>
+
+  <div class="body" id="appBody">
+
+    <!-- ══════════════════════════════
+         DAILY LOG PANEL
+    ══════════════════════════════ -->
+    <div class="panel active" id="panel-daily">
+
+      <!-- Calorie ring hero -->
+      <div class="cal-hero">
+        <div class="cal-ring-wrap">
+          <svg class="cal-ring-svg" viewBox="0 0 100 100">
+            <circle class="cal-ring-bg" cx="50" cy="50" r="45"/>
+            <circle class="cal-ring-fill" id="calRingFill" cx="50" cy="50" r="45"/>
+          </svg>
+          <div class="cal-ring-center">
+            <div class="cal-ring-num" id="calConsumed">1,284</div>
+            <div class="cal-ring-lbl">of 1,740 cal</div>
+          </div>
+        </div>
+        <div class="cal-stats">
+          <div>
+            <div class="cal-stat-row"><span class="cal-stat-label">🥩 Protein</span><span class="cal-stat-val">88g / 148g</span></div>
+            <div class="cal-bar-bg"><div class="cal-bar-fill" style="width:59%;background:#D97B6C;"></div></div>
+          </div>
+          <div>
+            <div class="cal-stat-row"><span class="cal-stat-label">🌾 Carbs</span><span class="cal-stat-val">102g / 150g</span></div>
+            <div class="cal-bar-bg"><div class="cal-bar-fill" style="width:68%;background:#E8A87C;"></div></div>
+          </div>
+          <div>
+            <div class="cal-stat-row"><span class="cal-stat-label">🥑 Fat</span><span class="cal-stat-val">44g / 58g</span></div>
+            <div class="cal-bar-bg"><div class="cal-bar-fill" style="width:76%;background:#9B7EC8;"></div></div>
+          </div>
+          <div>
+            <div class="cal-stat-row"><span class="cal-stat-label">🔥 Remaining</span><span class="cal-stat-val" style="color:var(--sage-dark);">456 cal</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase insight -->
+      <div class="phase-insight-strip">
+        <div class="pis-label">Luteal Phase Nutrition Note</div>
+        <div class="pis-title">Your hunger is real — and valid</div>
+        <div class="pis-body">Progesterone raises your metabolism ~150–300 cal/day in the luteal phase. Cravings for carbs and fat are hormonal. Focus on magnesium-rich foods (dark chocolate, pumpkin seeds) and complex carbs over refined sugar to stabilize serotonin and reduce PMS symptoms.</div>
+      </div>
+
+      <!-- Macros detail -->
+      <div class="macro-section">
+        <div class="macro-section-title">Full Macro Breakdown</div>
+        <div class="macro-row">
+          <div class="macro-name">Protein</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:59%;background:#D97B6C;"></div></div>
+          <div class="macro-nums">88 / 148g</div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-name">Carbohydrates</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:68%;background:#E8A87C;"></div></div>
+          <div class="macro-nums">102 / 150g</div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-name">Fat (total)</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:76%;background:#9B7EC8;"></div></div>
+          <div class="macro-nums">44 / 58g</div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-name">Saturated Fat</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:45%;background:#C25E4A;"></div></div>
+          <div class="macro-nums">10 / 22g</div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-name">Fiber</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:52%;background:#6B9E8B;"></div></div>
+          <div class="macro-nums">13 / 25g</div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-name">Sugar</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:38%;background:#F2C4B0;"></div></div>
+          <div class="macro-nums">19 / 50g</div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-name">Sodium</div>
+          <div class="macro-bar-bg"><div class="macro-bar-fill" style="width:61%;background:#8B5E52;"></div></div>
+          <div class="macro-nums">1,402 / 2,300mg</div>
+        </div>
+      </div>
+
+      <!-- Meals -->
+      <div class="meals-section">
+        <div class="meals-header">
+          <div class="meals-title">Meals Today</div>
+          <button class="add-meal-btn" onclick="showTab('search')">+ Add Food</button>
+        </div>
+
+        <!-- Breakfast -->
+        <div class="meal-card open" onclick="toggleMeal(this)">
+          <div class="meal-card-header">
+            <span class="meal-time-badge" style="background:var(--ovul);">☀️ Breakfast</span>
+            <span class="meal-cal-total">382 cal</span>
+            <span class="meal-chevron">▼</span>
+          </div>
+          <div class="meal-items">
+            <div class="meal-item">
+              <div class="meal-item-icon">🥚</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Scrambled Eggs (3 large)</div>
+                <div class="meal-item-macros">P: 18g · C: 2g · F: 14g</div>
+              </div>
+              <div class="meal-item-cal">210 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()" title="Edit">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()" title="Delete">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">🫐</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Blueberries (½ cup)</div>
+                <div class="meal-item-macros">P: 0.7g · C: 11g · F: 0.2g</div>
+              </div>
+              <div class="meal-item-cal">42 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">☕</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Coffee with cream (2 tbsp)</div>
+                <div class="meal-item-macros">P: 0.4g · C: 0.8g · F: 5.6g</div>
+              </div>
+              <div class="meal-item-cal">52 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">🌱</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Greek Yogurt (½ cup, plain)</div>
+                <div class="meal-item-macros">P: 10g · C: 4g · F: 0.4g</div>
+              </div>
+              <div class="meal-item-cal">78 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-add-row">
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('search')">+ Add item to breakfast</button>
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('scanner')">📷 Scan item</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lunch -->
+        <div class="meal-card" onclick="toggleMeal(this)">
+          <div class="meal-card-header">
+            <span class="meal-time-badge" style="background:var(--foll);">🌿 Lunch</span>
+            <span class="meal-cal-total">524 cal</span>
+            <span class="meal-chevron">▼</span>
+          </div>
+          <div class="meal-items">
+            <div class="meal-item">
+              <div class="meal-item-icon">🥗</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Grilled Chicken Salad</div>
+                <div class="meal-item-macros">P: 38g · C: 14g · F: 18g</div>
+              </div>
+              <div class="meal-item-cal">370 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">🥑</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Avocado (½, sliced)</div>
+                <div class="meal-item-macros">P: 1.5g · C: 6g · F: 11g</div>
+              </div>
+              <div class="meal-item-cal">114 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">🫙</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Olive Oil Dressing (1 tbsp)</div>
+                <div class="meal-item-macros">P: 0g · C: 0.1g · F: 14g</div>
+              </div>
+              <div class="meal-item-cal">40 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-add-row">
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('search')">+ Add item to lunch</button>
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('scanner')">📷 Scan item</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Snack -->
+        <div class="meal-card" onclick="toggleMeal(this)">
+          <div class="meal-card-header">
+            <span class="meal-time-badge" style="background:var(--mens);">🍎 Snack</span>
+            <span class="meal-cal-total">378 cal</span>
+            <span class="meal-chevron">▼</span>
+          </div>
+          <div class="meal-items">
+            <div class="meal-item">
+              <div class="meal-item-icon">🥜</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Almond Butter (2 tbsp)</div>
+                <div class="meal-item-macros">P: 7g · C: 6g · F: 18g</div>
+              </div>
+              <div class="meal-item-cal">196 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">🍌</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Banana (1 medium)</div>
+                <div class="meal-item-macros">P: 1.3g · C: 27g · F: 0.4g</div>
+              </div>
+              <div class="meal-item-cal">105 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-item">
+              <div class="meal-item-icon">🍫</div>
+              <div class="meal-item-info">
+                <div class="meal-item-name">Dark Chocolate 85% (1 oz)</div>
+                <div class="meal-item-macros">P: 2.2g · C: 13g · F: 12g</div>
+              </div>
+              <div class="meal-item-cal">77 cal</div>
+              <div class="meal-item-actions">
+                <button class="mia-btn" onclick="event.stopPropagation()">✏️</button>
+                <button class="mia-btn" onclick="event.stopPropagation()">🗑️</button>
+              </div>
+            </div>
+            <div class="meal-add-row">
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('search')">+ Add snack item</button>
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('scanner')">📷 Scan item</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dinner (empty) -->
+        <div class="meal-card" onclick="toggleMeal(this)">
+          <div class="meal-card-header">
+            <span class="meal-time-badge" style="background:var(--bark);">🌙 Dinner</span>
+            <span class="meal-cal-total" style="color:var(--muted);font-size:0.85rem;font-family:'DM Sans';">Not logged yet</span>
+            <span class="meal-chevron">▼</span>
+          </div>
+          <div class="meal-items">
+            <div class="meal-add-row" style="border-top:none;">
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('search')">+ Add dinner item</button>
+              <button class="meal-add-item-btn" onclick="event.stopPropagation();showTab('scanner')">📷 Scan item</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Water tracker -->
+      <div class="water-card">
+        <div class="water-title">💧 Hydration</div>
+        <div class="water-glasses" id="waterGlasses"></div>
+        <div class="water-info" id="waterInfo">5 of 8 glasses · 40 oz · Goal: 64 oz</div>
+      </div>
+
+    </div><!-- end panel-daily -->
+
+
+    <!-- ══════════════════════════════
+         SCANNER PANEL
+    ══════════════════════════════ -->
+    <div class="panel" id="panel-scanner">
+      <div class="scanner-wrap">
+
+        <div class="scanner-hero">
+          <div class="scanner-hero-icon">📷</div>
+          <div class="scanner-hero-title">Scan <em>any barcode</em></div>
+          <div class="scanner-hero-sub">Point your camera at any food package barcode or QR code. Nutrition facts load instantly — macros, vitamins, minerals, and more.</div>
+        </div>
+
+        <!-- Camera viewfinder -->
+        <div class="viewfinder-wrap" id="viewfinderWrap">
+          <video id="scanVideo" playsinline autoplay muted></video>
+          <div class="vf-overlay" id="vfOverlay">
+            <div class="vf-frame">
+              <div class="vf-corners">
+                <div class="vf-corner tr"></div>
+                <div class="vf-corner bl"></div>
+              </div>
+              <div class="scan-line" id="scanLine" style="display:none;"></div>
+            </div>
+            <div class="vf-placeholder" id="vfPlaceholder">
+              <div class="vf-placeholder-icon">📦</div>
+              <div class="vf-placeholder-text">Camera will appear here<br>Tap "Start Scanning" below</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="scan-btn" id="scanBtn" onclick="toggleScanner()">
+          <span id="scanBtnIcon">📷</span>
+          <span id="scanBtnText">Start Scanning</span>
+        </button>
+
+        <!-- Manual barcode -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="flex:1;height:1px;background:rgba(242,196,176,0.3);"></div>
+          <span style="font-size:0.75rem;color:var(--muted);">or enter manually</span>
+          <div style="flex:1;height:1px;background:rgba(242,196,176,0.3);"></div>
+        </div>
+        <div class="manual-barcode">
+          <input class="barcode-input" type="text" placeholder="Enter barcode number…" id="barcodeInput" inputmode="numeric">
+          <button class="barcode-go-btn" onclick="lookupBarcode()">Look Up</button>
+        </div>
+
+        <!-- Scanned result -->
+        <div class="scanned-result" id="scannedResult">
+          <div class="sr-header">
+            <div class="sr-icon" id="srIcon">🥣</div>
+            <div>
+              <div class="sr-name" id="srName">Kind Bar — Dark Chocolate Nuts & Sea Salt</div>
+              <div class="sr-brand" id="srBrand">Kind Snacks</div>
+              <div class="sr-serving" id="srServing">Serving: 1 bar (40g) · Per container: 12</div>
+            </div>
+          </div>
+          <div class="sr-body">
+
+            <!-- Nutrition sub-tabs -->
+            <div class="nutrition-tabs">
+              <button class="nt-tab active" onclick="setNutriTab(this,'macros')">Macros</button>
+              <button class="nt-tab" onclick="setNutriTab(this,'vitamins')">Vitamins</button>
+              <button class="nt-tab" onclick="setNutriTab(this,'minerals')">Minerals</button>
+              <button class="nt-tab" onclick="setNutriTab(this,'ingredients')">Ingredients</button>
+            </div>
+
+            <!-- Serving adjuster -->
+            <div class="serving-row">
+              <div class="serving-label">Servings</div>
+              <div class="serving-counter">
+                <button class="s-btn" onclick="adjustServing(-0.5)">−</button>
+                <div class="s-val" id="servingVal">1</div>
+                <button class="s-btn" onclick="adjustServing(0.5)">+</button>
+              </div>
+              <div style="font-size:0.78rem;color:var(--muted);margin-left:8px;" id="servingGrams">= 40g</div>
+            </div>
+
+            <!-- Macro grid -->
+            <div id="nutri-macros">
+              <div class="macro-grid-4" id="macroGrid4">
+                <div class="mg4-card"><div class="mg4-val" id="mg4cal">200</div><div class="mg4-unit">cal</div><div class="mg4-name">Calories</div></div>
+                <div class="mg4-card"><div class="mg4-val" id="mg4pro">6g</div><div class="mg4-unit">protein</div><div class="mg4-name">Protein</div></div>
+                <div class="mg4-card"><div class="mg4-val" id="mg4carb">17g</div><div class="mg4-unit">carbs</div><div class="mg4-name">Carbs</div></div>
+                <div class="mg4-card"><div class="mg4-val" id="mg4fat">15g</div><div class="mg4-unit">fat</div><div class="mg4-name">Total Fat</div></div>
+              </div>
+              <table class="nutrient-table">
+                <tr><td class="nt-name">Total Fat</td><td class="nt-val">15g</td><td class="nt-dv">19%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill med" style="width:19%;"></div></div></td></tr>
+                <tr><td class="nt-name" style="padding-left:12px;">Saturated Fat</td><td class="nt-val">2.5g</td><td class="nt-dv">13%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill med" style="width:13%;"></div></div></td></tr>
+                <tr><td class="nt-name" style="padding-left:12px;">Trans Fat</td><td class="nt-val">0g</td><td class="nt-dv">—</td><td class="nt-bar-cell"></td></tr>
+                <tr><td class="nt-name">Cholesterol</td><td class="nt-val">0mg</td><td class="nt-dv">0%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:0%;"></div></div></td></tr>
+                <tr><td class="nt-name">Sodium</td><td class="nt-val">115mg</td><td class="nt-dv">5%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:5%;"></div></div></td></tr>
+                <tr><td class="nt-name">Total Carbs</td><td class="nt-val">17g</td><td class="nt-dv">6%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:6%;"></div></div></td></tr>
+                <tr><td class="nt-name" style="padding-left:12px;">Dietary Fiber</td><td class="nt-val">7g</td><td class="nt-dv">25%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:25%;"></div></div></td></tr>
+                <tr><td class="nt-name" style="padding-left:12px;">Total Sugars</td><td class="nt-val">5g</td><td class="nt-dv">—</td><td class="nt-bar-cell"></td></tr>
+                <tr><td class="nt-name" style="padding-left:24px;">Added Sugars</td><td class="nt-val">5g</td><td class="nt-dv">10%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill med" style="width:10%;"></div></div></td></tr>
+                <tr><td class="nt-name">Protein</td><td class="nt-val">6g</td><td class="nt-dv">12%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:12%;"></div></div></td></tr>
+              </table>
+            </div>
+
+            <!-- Vitamins tab -->
+            <div id="nutri-vitamins" style="display:none;">
+              <table class="nutrient-table">
+                <tr><td class="nt-name">Vitamin A</td><td class="nt-val">0mcg</td><td class="nt-dv">0%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:0%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin C</td><td class="nt-val">0mg</td><td class="nt-dv">0%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:0%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin D</td><td class="nt-val">0mcg</td><td class="nt-dv">0%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:0%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin E</td><td class="nt-val">3.4mg</td><td class="nt-dv">23%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:23%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin K</td><td class="nt-val">4.2mcg</td><td class="nt-dv">4%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:4%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin B1 (Thiamine)</td><td class="nt-val">0.1mg</td><td class="nt-dv">8%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:8%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin B2 (Riboflavin)</td><td class="nt-val">0.1mg</td><td class="nt-dv">8%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:8%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin B3 (Niacin)</td><td class="nt-val">2.0mg</td><td class="nt-dv">13%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:13%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin B6</td><td class="nt-val">0.1mg</td><td class="nt-dv">6%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:6%;"></div></div></td></tr>
+                <tr><td class="nt-name">Vitamin B12</td><td class="nt-val">0mcg</td><td class="nt-dv">0%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:0%;"></div></div></td></tr>
+                <tr><td class="nt-name">Folate (B9)</td><td class="nt-val">12mcg</td><td class="nt-dv">3%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:3%;"></div></div></td></tr>
+              </table>
+            </div>
+
+            <!-- Minerals tab -->
+            <div id="nutri-minerals" style="display:none;">
+              <table class="nutrient-table">
+                <tr><td class="nt-name">Calcium</td><td class="nt-val">64mg</td><td class="nt-dv">5%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:5%;"></div></div></td></tr>
+                <tr><td class="nt-name">Iron</td><td class="nt-val">1.4mg</td><td class="nt-dv">8%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:8%;"></div></div></td></tr>
+                <tr><td class="nt-name">Magnesium</td><td class="nt-val">58mg</td><td class="nt-dv">14%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:14%;"></div></div></td></tr>
+                <tr><td class="nt-name">Phosphorus</td><td class="nt-val">148mg</td><td class="nt-dv">12%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:12%;"></div></div></td></tr>
+                <tr><td class="nt-name">Potassium</td><td class="nt-val">240mg</td><td class="nt-dv">6%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:6%;"></div></div></td></tr>
+                <tr><td class="nt-name">Sodium</td><td class="nt-val">115mg</td><td class="nt-dv">5%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:5%;"></div></div></td></tr>
+                <tr><td class="nt-name">Zinc</td><td class="nt-val">0.8mg</td><td class="nt-dv">7%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:7%;"></div></div></td></tr>
+                <tr><td class="nt-name">Copper</td><td class="nt-val">0.3mg</td><td class="nt-dv">33%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill high" style="width:33%;"></div></div></td></tr>
+                <tr><td class="nt-name">Manganese</td><td class="nt-val">0.6mg</td><td class="nt-dv">26%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:26%;"></div></div></td></tr>
+                <tr><td class="nt-name">Selenium</td><td class="nt-val">4.2mcg</td><td class="nt-dv">8%</td><td class="nt-bar-cell"><div class="nt-mini-bar"><div class="nt-mini-fill" style="width:8%;"></div></div></td></tr>
+              </table>
+            </div>
+
+            <!-- Ingredients tab -->
+            <div id="nutri-ingredients" style="display:none;">
+              <p style="font-size:0.82rem;color:var(--soft-brown);line-height:1.7;font-weight:300;">Almonds, peanuts, chicory root fiber, dark chocolate (sugar, chocolate liquor, cocoa butter, vanilla extract), honey, sea salt, soy lecithin.</p>
+              <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;">
+                <span style="font-size:0.72rem;background:rgba(107,143,99,0.1);color:var(--sage-dark);border:1px solid rgba(107,143,99,0.25);padding:3px 10px;border-radius:50px;">Gluten-free</span>
+                <span style="font-size:0.72rem;background:rgba(232,168,124,0.15);color:#B8783A;border:1px solid rgba(232,168,124,0.35);padding:3px 10px;border-radius:50px;">Contains soy</span>
+                <span style="font-size:0.72rem;background:rgba(232,168,124,0.15);color:#B8783A;border:1px solid rgba(232,168,124,0.35);padding:3px 10px;border-radius:50px;">Contains peanuts</span>
+                <span style="font-size:0.72rem;background:rgba(194,94,74,0.1);color:var(--terracotta);border:1px solid rgba(194,94,74,0.2);padding:3px 10px;border-radius:50px;">Added sugar</span>
+              </div>
+            </div>
+
+            <!-- Hormone score -->
+            <div class="score-row" style="margin-top:14px;">
+              <span class="score-badge score-ok">⚡ Luteal Score: OK</span>
+              <span class="score-note">Good fiber & magnesium. Added sugar may worsen PMS. Consider dark chocolate 90%+ instead.</span>
+            </div>
+
+          </div>
+          <div class="sr-actions">
+            <button class="sr-add-btn" onclick="addScannedFood()">Add to Log ✓</button>
+            <button class="sr-swap-btn" onclick="showTab('swaps')">See Swaps</button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end panel-scanner -->
+
+
+    <!-- ══════════════════════════════
+         SEARCH / ADD FOOD PANEL
+    ══════════════════════════════ -->
+    <div class="panel" id="panel-search">
+      <div class="search-panel-wrap">
+
+        <div class="search-bar-wrap">
+          <span class="search-icon-pos">🔍</span>
+          <input class="food-search-input" type="text" placeholder="Search foods, brands, meals…" id="foodSearchInput" oninput="searchFoods(this.value)">
+        </div>
+
+        <div class="cat-chips">
+          <button class="cat-chip active" onclick="setCat(this,'all')">All</button>
+          <button class="cat-chip" onclick="setCat(this,'protein')">🥩 Protein</button>
+          <button class="cat-chip" onclick="setCat(this,'veg')">🥦 Vegetables</button>
+          <button class="cat-chip" onclick="setCat(this,'fruit')">🍎 Fruit</button>
+          <button class="cat-chip" onclick="setCat(this,'grain')">🌾 Grains</button>
+          <button class="cat-chip" onclick="setCat(this,'dairy')">🥛 Dairy</button>
+          <button class="cat-chip" onclick="setCat(this,'fat')">🥑 Fats</button>
+          <button class="cat-chip" onclick="setCat(this,'snack')">🍫 Snacks</button>
+          <button class="cat-chip" onclick="setCat(this,'drink')">☕ Drinks</button>
+          <button class="cat-chip" onclick="setCat(this,'recent')">🕐 Recent</button>
+        </div>
+
+        <!-- Search results -->
+        <div id="foodResults">
+          <div class="food-result-item" onclick="selectFood('Chicken Breast, Grilled')">
+            <div class="fri-icon">🍗</div>
+            <div class="fri-info">
+              <div class="fri-name">Chicken Breast, Grilled</div>
+              <div class="fri-detail">100g · P: 31g · C: 0g · F: 3.6g</div>
+            </div>
+            <div class="fri-cal">165</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Chicken Breast, Grilled',165)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Salmon, Atlantic')">
+            <div class="fri-icon">🐟</div>
+            <div class="fri-info">
+              <div class="fri-name">Salmon, Atlantic (wild)</div>
+              <div class="fri-detail">100g · P: 25g · C: 0g · F: 13g</div>
+            </div>
+            <div class="fri-cal">208</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Salmon',208)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Spinach, Raw')">
+            <div class="fri-icon">🥬</div>
+            <div class="fri-info">
+              <div class="fri-name">Spinach, Raw</div>
+              <div class="fri-detail">100g · P: 2.9g · C: 3.6g · F: 0.4g · Iron: 16%</div>
+            </div>
+            <div class="fri-cal">23</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Spinach',23)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Eggs, Large')">
+            <div class="fri-icon">🥚</div>
+            <div class="fri-info">
+              <div class="fri-name">Eggs, Large (1 egg)</div>
+              <div class="fri-detail">50g · P: 6.3g · C: 0.6g · F: 5g</div>
+            </div>
+            <div class="fri-cal">72</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Egg',72)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Greek Yogurt, Plain')">
+            <div class="fri-icon">🫙</div>
+            <div class="fri-info">
+              <div class="fri-name">Greek Yogurt, Plain (0% fat)</div>
+              <div class="fri-detail">170g · P: 17g · C: 9g · F: 0g</div>
+            </div>
+            <div class="fri-cal">100</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Greek Yogurt',100)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Oatmeal')">
+            <div class="fri-icon">🥣</div>
+            <div class="fri-info">
+              <div class="fri-name">Oatmeal, Cooked (½ cup)</div>
+              <div class="fri-detail">117g · P: 2.5g · C: 14g · F: 1.4g</div>
+            </div>
+            <div class="fri-cal">74</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Oatmeal',74)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Sweet Potato')">
+            <div class="fri-icon">🍠</div>
+            <div class="fri-info">
+              <div class="fri-name">Sweet Potato, Baked</div>
+              <div class="fri-detail">150g · P: 2.3g · C: 27g · F: 0.1g · Vit A: 122%</div>
+            </div>
+            <div class="fri-cal">112</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Sweet Potato',112)">+</button>
+          </div>
+          <div class="food-result-item" onclick="selectFood('Pumpkin Seeds')">
+            <div class="fri-icon">🌱</div>
+            <div class="fri-info">
+              <div class="fri-name">Pumpkin Seeds (1 oz)</div>
+              <div class="fri-detail">28g · P: 8.5g · C: 2.5g · F: 13g · Mg: 37%</div>
+            </div>
+            <div class="fri-cal">151</div>
+            <button class="fri-add-btn" onclick="event.stopPropagation();quickAdd('Pumpkin Seeds',151)">+</button>
+          </div>
+        </div>
+
+        <!-- Manual Add Form -->
+        <div class="manual-add-card">
+          <div class="mac-header">
+            <div class="mac-title">➕ Add Custom Food</div>
+            <span class="mac-toggle" onclick="toggleManualForm()">Expand ▼</span>
+          </div>
+          <div class="mac-body" id="manualForm">
+            <div class="mac-field mac-full">
+              <div class="mac-label">Food Name</div>
+              <input class="mac-input" type="text" placeholder="e.g. Mom's Chicken Soup" id="mfName">
+            </div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Serving Size</div><input class="mac-input" type="text" placeholder="e.g. 1 cup, 150g"></div>
+              <div class="mac-field"><div class="mac-label">Calories</div><input class="mac-input" type="number" placeholder="0" id="mfCal"></div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--rose);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;">Macros</div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Protein (g)</div><input class="mac-input" type="number" placeholder="0" id="mfPro"></div>
+              <div class="mac-field"><div class="mac-label">Carbs (g)</div><input class="mac-input" type="number" placeholder="0" id="mfCarb"></div>
+            </div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Fat (g)</div><input class="mac-input" type="number" placeholder="0" id="mfFat"></div>
+              <div class="mac-field"><div class="mac-label">Fiber (g)</div><input class="mac-input" type="number" placeholder="0" id="mfFiber"></div>
+            </div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Sugar (g)</div><input class="mac-input" type="number" placeholder="0"></div>
+              <div class="mac-field"><div class="mac-label">Sodium (mg)</div><input class="mac-input" type="number" placeholder="0"></div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--rose);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;">Key Vitamins & Minerals (optional)</div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Iron (mg)</div><input class="mac-input" type="number" placeholder="0" step="0.1"></div>
+              <div class="mac-field"><div class="mac-label">Calcium (mg)</div><input class="mac-input" type="number" placeholder="0"></div>
+            </div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Vitamin D (mcg)</div><input class="mac-input" type="number" placeholder="0" step="0.1"></div>
+              <div class="mac-field"><div class="mac-label">Magnesium (mg)</div><input class="mac-input" type="number" placeholder="0"></div>
+            </div>
+            <div class="mac-row">
+              <div class="mac-field"><div class="mac-label">Vitamin C (mg)</div><input class="mac-input" type="number" placeholder="0"></div>
+              <div class="mac-field"><div class="mac-label">Potassium (mg)</div><input class="mac-input" type="number" placeholder="0"></div>
+            </div>
+            <div class="mac-field mac-full">
+              <div class="mac-label">Meal</div>
+              <select class="mac-input">
+                <option>Breakfast</option>
+                <option>Lunch</option>
+                <option>Snack</option>
+                <option selected>Dinner</option>
+              </select>
+            </div>
+            <button class="mac-save-btn" onclick="saveManualFood()">Save Custom Food ✓</button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end panel-search -->
+
+
+    <!-- ══════════════════════════════
+         SWAPS PANEL
+    ══════════════════════════════ -->
+    <div class="panel" id="panel-swaps">
+      <div class="swaps-wrap">
+
+        <div class="swaps-hero">
+          <div class="swaps-hero-label">Smart Food Swaps</div>
+          <div class="swaps-hero-title">Eat better — same satisfaction</div>
+          <div class="swaps-hero-sub">Cycle-aware swaps to reduce PMS, support hormones, and hit your goals without feeling deprived.</div>
+        </div>
+
+        <!-- Phase-specific note -->
+        <div class="swap-phase-note">
+          🌙 <strong>Luteal phase tip:</strong> You're in week 4. Cravings are hormonal — serotonin is low, magnesium is dropping. These swaps target that specifically: more magnesium, less refined sugar, stable blood sugar to reduce mood swings and bloat.
+        </div>
+
+        <!-- Diet filter -->
+        <div class="diet-filter-row">
+          <button class="df-chip active" onclick="setDietFilter(this,'all')">All Diets</button>
+          <button class="df-chip" onclick="setDietFilter(this,'carnivore')">🥩 Carnivore</button>
+          <button class="df-chip" onclick="setDietFilter(this,'keto')">🧈 Keto</button>
+          <button class="df-chip" onclick="setDietFilter(this,'vegan')">🌱 Vegan</button>
+          <button class="df-chip" onclick="setDietFilter(this,'paleo')">🍖 Paleo</button>
+          <button class="df-chip" onclick="setDietFilter(this,'med')">🫒 Mediterranean</button>
+          <button class="df-chip" onclick="setDietFilter(this,'gf')">🌾 Gluten-Free</button>
+        </div>
+
+        <!-- Swap cards -->
+        <div class="swap-card">
+          <div class="swap-card-header">
+            <div class="swap-card-icon">🍫</div>
+            <div>
+              <div class="swap-card-title">Craving something sweet?</div>
+              <div class="swap-card-sub">Better options that won't spike blood sugar</div>
+            </div>
+            <span class="swap-reason" style="background:rgba(155,126,200,0.1);color:var(--lute);border:1px solid rgba(155,126,200,0.25);margin-left:auto;">PMS relief</span>
+          </div>
+          <div class="swap-items">
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Milk Chocolate Bar</div>
+                <div class="swap-food-detail">230 cal · 25g sugar · 3g fiber</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Dark Chocolate 85%+</div>
+                <div class="swap-food-detail better">170 cal · 5g sugar · 4g fiber · 16% Mg</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Magnesium</span>
+                <span class="swap-benefit-tag">↓ Sugar</span>
+                <button class="swap-add-btn" onclick="quickAdd('Dark Chocolate 85%',170)">+ Add</button>
+              </div>
+            </div>
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Ice Cream (1 cup)</div>
+                <div class="swap-food-detail">270 cal · 28g sugar · 0g fiber</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Frozen Greek Yogurt + Berries</div>
+                <div class="swap-food-detail better">130 cal · 12g sugar · 3g fiber · P: 10g</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Protein</span>
+                <span class="swap-benefit-tag">↓ Calories</span>
+                <button class="swap-add-btn" onclick="quickAdd('Frozen Greek Yogurt',130)">+ Add</button>
+              </div>
+            </div>
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Candy / Gummies</div>
+                <div class="swap-food-detail">140 cal · 30g sugar · 0g fiber</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Medjool Dates + Almond Butter</div>
+                <div class="swap-food-detail better">155 cal · 18g sugar · 3g fiber · Mg + K</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Minerals</span>
+                <span class="swap-benefit-tag">Whole food</span>
+                <button class="swap-add-btn" onclick="quickAdd('Dates + Almond Butter',155)">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swap-card">
+          <div class="swap-card-header">
+            <div class="swap-card-icon">🧂</div>
+            <div>
+              <div class="swap-card-title">Salty cravings?</div>
+              <div class="swap-card-sub">Reduce bloat without missing the crunch</div>
+            </div>
+            <span class="swap-reason" style="background:rgba(107,158,139,0.1);color:var(--foll);border:1px solid rgba(107,158,139,0.25);margin-left:auto;">Anti-bloat</span>
+          </div>
+          <div class="swap-items">
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Potato Chips (1 oz)</div>
+                <div class="swap-food-detail">155 cal · 180mg sodium · 1g fiber</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Pumpkin Seeds (1 oz)</div>
+                <div class="swap-food-detail better">151 cal · 5mg sodium · P: 8.5g · Mg: 37%</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Magnesium</span>
+                <span class="swap-benefit-tag">↓ Sodium</span>
+                <button class="swap-add-btn" onclick="quickAdd('Pumpkin Seeds',151)">+ Add</button>
+              </div>
+            </div>
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Crackers (1 serving)</div>
+                <div class="swap-food-detail">130 cal · 230mg sodium · 1g fiber</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Rice Cakes + Avocado</div>
+                <div class="swap-food-detail better">110 cal · 35mg sodium · 4g fiber · healthy fat</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↓ Sodium</span>
+                <span class="swap-benefit-tag">↑ Fiber</span>
+                <button class="swap-add-btn" onclick="quickAdd('Rice Cake + Avocado',110)">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swap-card">
+          <div class="swap-card-header">
+            <div class="swap-card-icon">🍞</div>
+            <div>
+              <div class="swap-card-title">Carb cravings (luteal)?</div>
+              <div class="swap-card-sub">Complex carbs that support serotonin without the crash</div>
+            </div>
+            <span class="swap-reason" style="background:rgba(155,126,200,0.1);color:var(--lute);border:1px solid rgba(155,126,200,0.25);margin-left:auto;">Mood support</span>
+          </div>
+          <div class="swap-items">
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">White Bread (2 slices)</div>
+                <div class="swap-food-detail">160 cal · 2g fiber · high GI</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Sourdough or Sprouted Grain</div>
+                <div class="swap-food-detail better">160 cal · 4g fiber · lower GI · B vitamins</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Fiber</span>
+                <span class="swap-benefit-tag">Lower GI</span>
+                <button class="swap-add-btn" onclick="quickAdd('Sourdough',160)">+ Add</button>
+              </div>
+            </div>
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">White Rice (1 cup cooked)</div>
+                <div class="swap-food-detail">206 cal · 0.6g fiber · high GI</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Quinoa (1 cup cooked)</div>
+                <div class="swap-food-detail better">222 cal · 5g fiber · P: 8g · all 9 amino acids</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Protein</span>
+                <span class="swap-benefit-tag">Complete AA</span>
+                <button class="swap-add-btn" onclick="quickAdd('Quinoa',222)">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swap-card">
+          <div class="swap-card-header">
+            <div class="swap-card-icon">🥤</div>
+            <div>
+              <div class="swap-card-title">Drink swaps</div>
+              <div class="swap-card-sub">Cut hidden calories and support hormones</div>
+            </div>
+            <span class="swap-reason" style="background:rgba(107,143,99,0.1);color:var(--sage-dark);border:1px solid rgba(107,143,99,0.25);margin-left:auto;">Hormone-friendly</span>
+          </div>
+          <div class="swap-items">
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Flavored Latte (16 oz)</div>
+                <div class="swap-food-detail">320 cal · 42g sugar · 0g fiber</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Matcha Latte (oat/almond milk)</div>
+                <div class="swap-food-detail better">80 cal · 8g sugar · L-theanine · antioxidants</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↓ 240 cal</span>
+                <span class="swap-benefit-tag">Calming</span>
+                <button class="swap-add-btn" onclick="quickAdd('Matcha Latte',80)">+ Add</button>
+              </div>
+            </div>
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Soda (12 oz)</div>
+                <div class="swap-food-detail">140 cal · 39g sugar · 0 nutrients</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Sparkling water + lemon/mint</div>
+                <div class="swap-food-detail better">0 cal · 0g sugar · hydrating · hormone-neutral</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↓ 140 cal</span>
+                <span class="swap-benefit-tag">Anti-bloat</span>
+                <button class="swap-add-btn" onclick="quickAdd('Sparkling Water',0)">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swap-card">
+          <div class="swap-card-header">
+            <div class="swap-card-icon">🥩</div>
+            <div>
+              <div class="swap-card-title">Iron-rich during menstrual phase</div>
+              <div class="swap-card-sub">Replenish what your period takes</div>
+            </div>
+            <span class="swap-reason" style="background:rgba(217,123,108,0.1);color:var(--mens);border:1px solid rgba(217,123,108,0.25);margin-left:auto;">Menstrual phase</span>
+          </div>
+          <div class="swap-items">
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Chicken Breast</div>
+                <div class="swap-food-detail">165 cal · Iron: 3%</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Beef Sirloin or Liver</div>
+                <div class="swap-food-detail better">207 cal · Iron: 15–180% · heme iron (best absorbed)</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑↑ Iron</span>
+                <span class="swap-benefit-tag">Heme iron</span>
+                <button class="swap-add-btn" onclick="quickAdd('Beef Sirloin',207)">+ Add</button>
+              </div>
+            </div>
+            <div class="swap-item">
+              <div class="swap-from">
+                <div class="swap-food-name original">Regular Spinach Salad</div>
+                <div class="swap-food-detail">23 cal · Iron: 7% (non-heme)</div>
+              </div>
+              <div class="swap-arrow">→</div>
+              <div class="swap-to">
+                <div class="swap-food-name">Spinach + Vitamin C source</div>
+                <div class="swap-food-detail better">Add bell pepper or lemon — 3× iron absorption boost</div>
+              </div>
+              <div class="swap-benefit">
+                <span class="swap-benefit-tag">↑ Absorption</span>
+                <span class="swap-benefit-tag">Smart pairing</span>
+                <button class="swap-add-btn" onclick="quickAdd('Spinach + Bell Pepper',40)">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end panel-swaps -->
+
+  </div><!-- end body -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <a href="herrhythm-landing.html" class="nav-item"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="herrhythm-app-diets.html" class="nav-item"><span class="nav-icon">🥗</span><span class="nav-label">Diet</span></a>
+    <a href="herrhythm-app-cycle.html" class="nav-item"><span class="nav-icon">🔄</span><span class="nav-label">Cycle</span></a>
+    <a href="herrhythm-app-weight.html" class="nav-item"><span class="nav-icon">⚖️</span><span class="nav-label">Weight</span></a>
+    <a href="herrhythm-qa.html" class="nav-item"><span class="nav-icon">💬</span><span class="nav-label">Q&amp;A</span></a>
+  </div>
+
+</div><!-- end app -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Tab switching ──
+function showTab(tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById('appBody').scrollTop = 0;
+}
+
+// ── Calorie ring animation ──
+function animateCalRing() {
+  const consumed = 1284, goal = 1740;
+  const pct = Math.min(consumed / goal, 1);
+  const circumference = 2 * Math.PI * 45; // r=45
+  const offset = circumference * (1 - pct);
+  const fill = document.getElementById('calRingFill');
+  if (!fill) return;
+  fill.style.strokeDasharray = circumference;
+  setTimeout(() => { fill.style.strokeDashoffset = offset; }, 150);
+}
+
+// ── Water glasses ──
+let waterCount = 5;
+function renderWater() {
+  const wrap = document.getElementById('waterGlasses');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const g = document.createElement('div');
+    g.className = 'water-glass' + (i < waterCount ? ' filled' : '');
+    g.textContent = i < waterCount ? '💧' : '🫙';
+    g.onclick = () => { waterCount = (i < waterCount) ? i : i + 1; renderWater(); };
+    wrap.appendChild(g);
+  }
+  const oz = waterCount * 8;
+  document.getElementById('waterInfo').textContent = `${waterCount} of 8 glasses · ${oz} oz · Goal: 64 oz`;
+}
+
+// ── Meal cards toggle ──
+function toggleMeal(card) {
+  card.classList.toggle('open');
+}
+
+// ── Scanner ──
+let scanning = false;
+let videoStream = null;
+
+async function toggleScanner() {
+  if (scanning) {
+    stopScanner();
+  } else {
+    startScanner();
+  }
+}
+
+async function startScanner() {
+  try {
+    const constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('scanVideo');
+    video.srcObject = videoStream;
+    video.style.display = 'block';
+    document.getElementById('vfPlaceholder').style.display = 'none';
+    document.getElementById('scanLine').style.display = 'block';
+    scanning = true;
+    document.getElementById('scanBtn').classList.add('scanning');
+    document.getElementById('scanBtnText').textContent = 'Scanning… Point at barcode';
+    document.getElementById('scanBtnIcon').textContent = '⏹';
+
+    // Try ZXing if available
+    if (window.ZXing) {
+      try {
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        codeReader.decodeFromVideoDevice(null, 'scanVideo', (result, err) => {
+          if (result) {
+            stopScanner();
+            handleBarcodeScan(result.getText());
+          }
+        });
+      } catch(e) {
+        // ZXing not loaded — simulate after 3s for demo
+        setTimeout(() => { if(scanning) { stopScanner(); simulateScan(); } }, 3000);
+      }
+    } else {
+      // Demo: simulate scan after 3 seconds
+      setTimeout(() => { if(scanning) { stopScanner(); simulateScan(); } }, 3000);
+    }
+  } catch (err) {
+    // Camera permission denied or unavailable
+    showToast('📷 Camera access needed — grant permission in browser settings');
+    simulateScan();
+  }
+}
+
+function stopScanner() {
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  const video = document.getElementById('scanVideo');
+  video.style.display = 'none';
+  document.getElementById('vfPlaceholder').style.display = 'block';
+  document.getElementById('scanLine').style.display = 'none';
+  scanning = false;
+  document.getElementById('scanBtn').classList.remove('scanning');
+  document.getElementById('scanBtnText').textContent = 'Start Scanning';
+  document.getElementById('scanBtnIcon').textContent = '📷';
+}
+
+function simulateScan() {
+  showToast('✅ Barcode detected: 0049000028935');
+  setTimeout(() => handleBarcodeScan('0049000028935'), 600);
+}
+
+function handleBarcodeScan(barcode) {
+  showToast(`🔍 Looking up barcode ${barcode}…`);
+  // In production: fetch from Open Food Facts API
+  // https://world.openfoodfacts.org/api/v0/product/{barcode}.json
+  setTimeout(() => {
+    document.getElementById('scannedResult').classList.add('show');
+    document.getElementById('scannedResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    showToast('✅ Product found!');
+  }, 800);
+}
+
+function lookupBarcode() {
+  const code = document.getElementById('barcodeInput').value.trim();
+  if (!code) { showToast('⚠️ Enter a barcode number first'); return; }
+  handleBarcodeScan(code);
+}
+
+// ── Nutrition tabs ──
+function setNutriTab(btn, tab) {
+  document.querySelectorAll('.nt-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('nutri-macros').style.display = tab === 'macros' ? 'block' : 'none';
+  document.getElementById('nutri-vitamins').style.display = tab === 'vitamins' ? 'block' : 'none';
+  document.getElementById('nutri-minerals').style.display = tab === 'minerals' ? 'block' : 'none';
+  document.getElementById('nutri-ingredients').style.display = tab === 'ingredients' ? 'block' : 'none';
+}
+
+// ── Serving adjuster ──
+let servings = 1;
+const baseNutrition = { cal:200, pro:'6g', carb:'17g', fat:'15g', grams:40 };
+
+function adjustServing(delta) {
+  servings = Math.max(0.5, Math.round((servings + delta) * 2) / 2);
+  document.getElementById('servingVal').textContent = servings;
+  document.getElementById('servingGrams').textContent = `= ${Math.round(baseNutrition.grams * servings)}g`;
+  document.getElementById('mg4cal').textContent = Math.round(baseNutrition.cal * servings);
+  document.getElementById('mg4pro').textContent = `${Math.round(6 * servings)}g`;
+  document.getElementById('mg4carb').textContent = `${Math.round(17 * servings)}g`;
+  document.getElementById('mg4fat').textContent = `${Math.round(15 * servings)}g`;
+}
+
+// ── Add scanned food ──
+function addScannedFood() {
+  showToast('✅ Added to today\'s log!');
+  document.getElementById('scannedResult').classList.remove('show');
+  setTimeout(() => showTab('daily'), 800);
+}
+
+// ── Search foods ──
+function searchFoods(query) {
+  // In production: query Open Food Facts or USDA FoodData Central API
+  // For now, filter the visible items
+  const items = document.querySelectorAll('.food-result-item');
+  items.forEach(item => {
+    const name = item.querySelector('.fri-name').textContent.toLowerCase();
+    item.style.display = (query === '' || name.includes(query.toLowerCase())) ? '' : 'none';
+  });
+}
+
+// ── Category filter ──
+function setCat(btn, cat) {
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Quick add ──
+function quickAdd(name, cal) {
+  showToast(`✅ ${name} added to log!`);
+}
+
+// ── Select food (open detail) ──
+function selectFood(name) {
+  showToast(`📋 Opening ${name} details…`);
+}
+
+// ── Manual form toggle ──
+function toggleManualForm() {
+  const form = document.getElementById('manualForm');
+  const toggle = document.querySelector('.mac-toggle');
+  const isOpen = form.classList.contains('open');
+  form.classList.toggle('open');
+  toggle.textContent = isOpen ? 'Expand ▼' : 'Collapse ▲';
+}
+
+// ── Save manual food ──
+function saveManualFood() {
+  const name = document.getElementById('mfName').value.trim();
+  const cal = document.getElementById('mfCal').value;
+  if (!name) { showToast('⚠️ Please enter a food name'); return; }
+  showToast(`✅ "${name}" saved to your foods!`);
+}
+
+// ── Diet filter (swaps) ──
+function setDietFilter(btn, diet) {
+  document.querySelectorAll('.df-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  animateCalRing();
+  renderWater();
+});
+</script>
+</body>
+</html>
